@@ -13,6 +13,10 @@
    - directly pulling from topics isn't reliable in the discourse API
  - utilizes subprocess.Popen running curl to pull the post by post_id
  
+### dcbpull (blind pull)
+ - works just like dcpull, but takes only -t topic_number
+ - places output in a file named after the article, with the topic number appendedn
+ 
 ### dcpush
  - takes CLI params -t topic_number and -i input file
    - **topic_number** is the number after the /t/ in the discourse document URL
@@ -24,3 +28,7 @@
    - this is handled by padding the output string with blanks to 9000 characters
    - during the PUT command, the extra spaces are collapsed to one space, so the file is normal when posted,
      both in the discourse markup and in the generated HTML
+
+### pull-all
+ - a simple shell script to use dcbpull to pull a range of topic numbers
+   - modify the range in the "for" loop to change the topic numbers pulled
