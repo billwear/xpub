@@ -15,7 +15,7 @@
  
 ### dcbpull (blind pull)
  - works just like dcpull, but takes only -t topic_number
- - places output in a file named after the article, with the topic number appendedn
+ - places output in a file named after the article, with the topic number appended
  
 ### dcpush
  - takes CLI params -t topic_number and -i input file
