@@ -1,9 +1,0 @@
-#!/bin/bash
-# modify the topic range, in the for loop, to meet your needs
-#
-for i in {1...1700}
-do
-    dcbpull -t $i
-# sleep for a second to let the last api call complete
-    sleep 1 
-done
