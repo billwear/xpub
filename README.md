@@ -1,6 +1,6 @@
 # dpub(7) - edit and publish discourse topics
 
-version 0.8, 26 June 2020
+version 0.9, 26 June 2020
 
 ```
 dpub [OPTION]...
