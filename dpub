@@ -126,6 +126,12 @@ if(options.get and not (options.filename or options.autoname)):
     print("fix your mistake and try again, or try -h for help")
     sys.exit()
 
+# if get was commanded with both a filename and the autoname flag, notify and stop
+if(options.get and options.filename and options.autoname):
+    print("-g (get) must have either a filename (-f) or autoname (-a); not both")
+    print("fix your mistake and try again, or try -h for help")
+    sys.exit()
+
 # if put was commanded and autoname was specified, warn -a ignored & continue
 if(options.autoname and options.put):
     print("note: -a (autoname) ignored with -p (put)")
@@ -158,6 +164,90 @@ cfile = open("/etc/dc.yaml","r")
 config_data = load(cfile, Loader=Loader)
 cfile.close();
 
+# read a range of posts
+if( options.get and options.srange and options.erange ):
+
+    # giant for loop to get the topic range specified
+    for tn in range( int(options.srange), int(options.erange) + 1):
+    
+        # run the shell command to get the topic and retain the result
+        proc = subprocess.Popen([
+            'curl',
+            '-X',
+            'GET',
+            '-H',
+            'Api-Key: ' + config_data['api_key'],
+            '-H',
+            'Api-Username: ' + config_data['api_username'],
+            '-H',
+            'Content-Type: application/json',
+            config_data['base_url'] + '/t/{'+str(tn)+'}.json'],
+                                stdout=subprocess.PIPE
+        )
+
+        # read the result into a usable buffer
+        output = proc.stdout.read()
+        
+        # convert the result to json
+        topic_json = json.loads(output)
+        
+        # extract the post ID from the topic json
+        post_id = topic_json['post_stream']['posts'][0]['id']
+        category_id = topic_json['category_id']
+        if(options.category):
+            if((category_id is None) or (int(options.category) != int(category_id))):
+                continue
+        autoname = topic_json['post_stream']['posts'][0]['topic_slug'] + \
+            '-' + str(tn) + '.md'
+        
+        # if user requested the intermediate topic json, specified filename
+        if( options.topic_json_file ):
+            f2 = open(options.topic_json_file, "w")
+            f2.write(str(topic_json))
+            f2.close()
+            
+        # read the post using the api, retaining the return value
+        proc2 = subprocess.Popen([
+            'curl',
+            '-X',
+            'GET',
+            '-H',
+            'Api-Key: ' + config_data['api_key'],
+            '-H',
+            'Api-Username: ' + config_data['api_username'],
+            '-H',
+            'Content-Type: application/json',
+            config_data['base_url'] + '/posts/{'+str(post_id)+'}.json'],
+                                 stdout=subprocess.PIPE
+        )
+            
+        # copy the return value to a suitable buffer
+        output2 = proc2.stdout.read()
+        
+        # convert the returned post to json
+        post_json = json.loads(output2)
+        
+        # if user req intermediate post json, write it to the specified filename
+        if( options.json_file ):
+            f2 = open(options.json_file, "w")
+            f2.write(str(post_json))
+            f2.close()
+
+        # extract the article markdown from the json output
+        raw = post_json['raw']
+            
+        # write the article markdown to the specified filename
+        if(options.autoname):
+            outfile_name = autoname;
+        else:
+            outfile_name = options.filename
+        f = open(outfile_name, "w")
+        f.write(str(raw))
+        f.close()
+                    
+    # exit now, as this run is finished
+    sys.exit(0)
+
 # read the topic, which is required for both get and put
 # note that discourse *topic* put doesn't work reliably at this time,
 # so dpub gets the topic to get the post number, then reads or writes the post
@@ -186,6 +276,14 @@ if( options.get or options.put ):
 
     # extract the post ID from the topic json
     post_id = topic_json['post_stream']['posts'][0]['id']
+    category_id = topic_json['category_id']
+    if(options.category):
+        if((category_id is None) or (int(options.category) != int(category_id))):
+            print("topic does not match the category specified")
+            print("exiting without pulling topic")
+            sys.exit()
+    autoname = topic_json['post_stream']['posts'][0]['topic_slug'] + \
+        '-' + str(options.topic) + '.md'
     
     # if user requested the intermediate topic json, specified filename
     if( options.topic_json_file ):
@@ -225,11 +323,18 @@ if( options.get ):
 
     # extract the article markdown from the json output
     raw = post_json['raw']
-
+    
     # write the article markdown to the specified filename
-    f = open(options.filename, "w")
+    if(options.autoname):
+        outfile_name = autoname;
+    else:
+        outfile_name = options.filename
+    f = open(outfile_name, "w")
     f.write(str(raw))
     f.close()
+
+    # exit now, as this run is finished
+    sys.exit(0)
 
 # put a (presumably edited) article back into discourse, updating the post
 if( options.put ):
@@ -286,6 +391,8 @@ if( options.put ):
     # remove the temporary json file
     os.remove("foo.json")
 
+    # exit now, as this run is finished
+    sys.exit(0)
 
 
 
