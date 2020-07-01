@@ -2,76 +2,168 @@
 # dpub is a set of discourse publishing tools, using the discourse API
 # try "dpub -h" for help and calling sequences
 #
-import subprocess, json, sys, getopt
-from optparse import OptionParser
-from yaml import load, dump
-try:
+import subprocess                       # for issuing shell commands
+import json                             # for en/decoding json
+import sys, os                          # for various uses
+from optparse import OptionParser       # for nice, unix-like options
+from yaml import load, dump             # for handling yaml config file
+try:                                    # also ^^
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     from yaml import Loader, Dumper
 
+# command line parser setup
 parser = OptionParser()
-parser.add_option("-a", "--autoname", dest="autoname",
+
+# -a, --autoname: sets get output filename to topic slug + topic number
+parser.add_option("-a", "--autoname",action="store_true",dest="autoname", default=False,
                   help="build filename from topic name+number (with -g; ignores -f)")
+
+# -c, --category: restricts get & new operations to a specific category
 parser.add_option("-c", "--category", dest="category", 
                   help="only operate on topics in specifed category")
+
+# -f, --file: filename to get into, or filename to put/create from
 parser.add_option("-f", "--file", dest="filename",
                   help="file to read (-g) or write (-p, -c)", metavar="FILE")
+
+# -g, --get: pull a topic from discourse
 parser.add_option("-g", "--get", action="store_true", dest="get", default=False,
                   help="read TOPIC into FILENAME; req -t & -f")
+
+# -k, --config: yaml configuration file with site & auth data
 parser.add_option("-k", "--config", dest="config_file",
                   help="config file w/URL, api-key, username (default \"dpub.yaml\")")
+
+# -j, --json: write output post json to file before converting to markdown
 parser.add_option("-j", "--json", dest="json_file",
                   help="write post json to JSON_FILE when using -g, before converting")
+
+# -J, --JSON: write output topic json to file before converting to markdown
 parser.add_option("-J", "--JSON", dest="topic_json_file",
                   help="write TOPIC json to TOPIC_JSON_FILE when using -g")
+
+# -n, --new: create a new topic
 parser.add_option("-n", "--new", action="store_true", dest="new", default=False,
                   help="create new topic from filename")
+
+# -p, --put: put a (probably changed) topic back into discourse
 parser.add_option("-p", "--put", action="store_true", dest="put", default=False,
                   help="write TOPIC from FILENAME into discourse; req -t & -f")
+
+# -r, --srange: specify the lowest topic number to bulk get
 parser.add_option("-r", "--srange", dest="srange",
                   help="minimum topic number to read (with -g)")
+
+# -R, --erange: specify the highest topic number to bulk get
 parser.add_option("-R", "--erange", dest="erange",
                   help="minimum topic number to read (with -g)")
+
+# -t, --topic: specify the topic number to get or put
 parser.add_option("-t", "--topic", dest="topic",
                   help="discourse topic to read or write (with -g or -p)")
 
+# actually parse the incoming args
 (options,args) = parser.parse_args()
 
-# autoname with filename
-if((options.autoname and options.filename) or \
-   (options.autoname and options.put) or \
-   (options.autoname and options.get) or \
-   (options.autoname and options.new) or \
-   (options.get and options.put) or \
-   (options.get and options.new) or \
-   (options.new and options.put) or \
-   (options.put and not options.topic ) or \
-   (options.get and not (options.topic or (options.srange and options.erange))) or \
-   (options.topic and (options.srange or options.erange)) or \
-   ((options.erange and not options.srange) or (options.srange and not options.erange)) or \
-   (options.put and not options.filename) or \
-   ((options.put or options.new) and not options.filename ) or \
-   (options.get and not (options.filename or options.autoname)) or \
-   (not options.get and not options.put and not options.new) or \
-   (options.put  and (options.srange or options.erange)) or \
-   (options.new and (options.topic or options.srange or options.erange))):
-    parser.print_help()
+# if no command was given, notify and stop
+if(not options.get and not options.put and not options.new):
+    print("you must get (-g), put (-p), or create new (-n)")
+    print("fix your mistake and try again, or try -h for help")
     sys.exit()
 
-# read config file to get api-key, api-usr, and discourse url
+# if get and put were commanded together, notify and stop    
+if(options.get and options.put):
+    print("-g (get) and -p (put) are incompatible")
+    print("fix your mistake and try again, or try -h for help")
+    sys.exit()
+
+# if get and new were commanded together, notify and stop
+if(options.get and options.new):
+    print("-g (get) and -n (new) are incompatible")
+    print("fix your mistake and try again, or try -h for help")
+    sys.exit()
+
+# if put and new were commanded together, notify and stop
+if(options.put and options.new):
+    print("-p (put) and -n (new) are incompatible")
+    print("fix your mistake and try again, or try -h for help")
+    sys.exit()
+
+# if put was commanded with no topic, notify and stop
+if(options.put and not options.topic):
+    print("-p (put) requires specifying a topic with -t")
+    print("fix your mistake and try again, or try -h for help")
+    sys.exit()
+
+# if get was commanded without a topic or a range, notify and stop
+if(options.get and not (options.topic or (options.srange and options.erange))):
+    print("-g (get) requires a topic (-t) or topic range (-r/R)")
+    print("fix your mistake and try again, or try -h for help")
+    sys.exit()
+
+# if one end of range was specified without the other, notify and stop
+if((options.erange and not options.srange) or (options.srange and not options.erange)):
+    print("-r (start range) and -R (end range) are both required for a topic range")
+    print("fix your mistake and try again, or try -h for help")
+    sys.exit()
+
+# if put was commanded without a filename, notify and stop
+if(options.put and not options.filename):
+    print("-p (put) must have a filename (-f) to put")
+    print("fix your mistake and try again, or try -h for help")
+    sys.exit()
+
+# if new was specified without a filename, notify and stop
+if(options.new and not options.filename):
+    print("-n (new) must have a filename (-f) to put")
+    print("fix your mistake and try again, or try -h for help")
+    sys.exit()
+
+# if get was commanded without a filename or autoname flag, notify and stop
+if(options.get and not (options.filename or options.autoname)):
+    print("-g (get) must have a filename (-f) to use, or autoname (-a) enabled")
+    print("fix your mistake and try again, or try -h for help")
+    sys.exit()
+
+# if put was commanded and autoname was specified, warn -a ignored & continue
+if(options.autoname and options.put):
+    print("note: -a (autoname) ignored with -p (put)")
+
+# if new was commanded and autoname was specified, warn -a ignored & continue
+if(options.autoname and options.new):
+    print("note: -a (autoname) ignored with -n (new)")
+
+# if new was commanded and a topic number was given, warn -t ignored & continue
+if(options.new and options.topic):
+    print("note: -t (topic) ignored with a -n (new)")
+
+# if new was commanded and a range was given, warn -r/R ignored & continue
+if(options.new and (options.srange or options.erange)):
+    print("note: -r/R (topic range) ignored with a -n (new)")
+
+# if put was commanded and a range was given, warn -r/R ignored & continue
+if(options.put and (options.srange or options.erange)):
+    print("note: -r/R (topic range) ignored with a -p (put)")
+
+# if config file specified on command line, use that value
 if(options.config_file):
     config_file = options.config_file
+# otherwise, use the default "/etc/dc.yaml"
 else:
     config_file = "/etc/dc.yaml"
+
+# read config file to get api-key, api-usr, and discourse url
 cfile = open("/etc/dc.yaml","r")
 config_data = load(cfile, Loader=Loader)
+cfile.close();
 
 # read the topic, which is required for both get and put
-# note that discourse topic put doesn't work reliably at this time,
+# note that discourse *topic* put doesn't work reliably at this time,
 # so dpub gets the topic to get the post number, then reads or writes the post
 if( options.get or options.put ):
-    print("reading the topic")
+    
+    # run the shell command to get the topic and retain the result
     proc = subprocess.Popen([
         'curl',
         '-X',
@@ -85,10 +177,17 @@ if( options.get or options.put ):
         config_data['base_url'] + '/t/{'+str(options.topic)+'}.json'],
         stdout=subprocess.PIPE
     )
+
+    # read the result into a usable buffer
     output = proc.stdout.read()
+
+    # convert the result to json
     topic_json = json.loads(output)
+
+    # extract the post ID from the topic json
     post_id = topic_json['post_stream']['posts'][0]['id']
-    # if user requested the intermediate topic json, write it to other spec'd filename
+    
+    # if user requested the intermediate topic json, specified filename
     if( options.topic_json_file ):
         f2 = open(options.topic_json_file, "w")
         f2.write(str(topic_json))
@@ -96,7 +195,8 @@ if( options.get or options.put ):
 
 # get post, convert it to markdown, and write it to the specified filename
 if( options.get ):
-    # read the post using the api
+    
+    # read the post using the api, retaining the return value
     proc2 = subprocess.Popen([
         'curl',
         '-X',
@@ -110,36 +210,64 @@ if( options.get ):
         config_data['base_url'] + '/posts/{'+str(post_id)+'}.json'],
         stdout=subprocess.PIPE
     )
+
+    # copy the return value to a suitable buffer
     output2 = proc2.stdout.read()
+
+    # convert the returned post to json
     post_json = json.loads(output2)
     
-    # if user requested the intermediate post json, write it to other spec'd filename
+    # if user requested the intermediate post json, write it to the specified filename
     if( options.json_file ):
         f2 = open(options.json_file, "w")
         f2.write(str(post_json))
         f2.close()
 
-    # capture just the article text itself ('raw'), convert, & write to output file
+    # extract the article markdown from the json output
     raw = post_json['raw']
+
+    # write the article markdown to the specified filename
     f = open(options.filename, "w")
     f.write(str(raw))
+    f.close()
 
+# put a (presumably edited) article back into discourse, updating the post
 if( options.put ):
+    
     # load and convert the specified markdown file
     f = open(options.filename, "r")
     markdown = f.read()
+    
     # pad the markdown to 9000 chars to avoid discourse bug
     outstr = markdown.ljust(9000)
+
+    # create a dictionary buffer for the markdown
     data = {}
-    # place the markdown in the json "raw" location, covert, and write to json file
+    
+    # place the markdown against a key called "raw" (the json key required by discourse)
     data["raw"] = outstr
+
+    # open a temporary json file to store the markdown as json
     f = open("foo.json", "w")
+
+    # convert the markdown to json and store it in the temp file
     f.write(json.dumps(data))
 
-    # upload the json to discourse, replacing whatever was at post_id
+    # close the temp file for completeness
+    f.close()
+
+    # if user requested the intermediate post json, write it to the specified filename
+    if( options.json_file ):
+        f2 = open(options.json_file, "w")
+        f2.write(str(post_json))
+        f2.close()
+
+    # set the url and auth data as read from the yaml config file
     url = config_data['base_url'] + '/posts/{'+str(post_id)+'}.json'
     apikey = 'Api-Key: ' + config_data['api_key']
     apiusername = 'Api-Username: ' + config_data['api_username']
+
+    # use the curl command to re-post the markdown into discourse
     response = subprocess.check_output([
         'curl',
         '-X',
@@ -155,9 +283,8 @@ if( options.put ):
         '@foo.json']
     )
 
-
-
-
+    # remove the temporary json file
+    os.remove("foo.json")
 
 
 
