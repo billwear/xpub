@@ -1,6 +1,6 @@
 # dpub(7) - edit and publish discourse topics
 
-version 0.81, 26 June 2020
+version 0.8, 26 June 2020
 
 ```
 dpub [OPTION]...
@@ -29,19 +29,17 @@ is written in python; it requires at least python3 to be installed on the system
 # Options
 
 
-* **-g, --get**  
-  Read a numbered TOPIC into FILENAME; requires -t TOPIC and -f FILENAME.
-* **-p, --put**  
-  Write FILENAME to TOPIC number; requires -t TOPIC and -f FILENAME.
-* **-c, --create**  
-  Create a new topic and write FILENAE to it; requires -f FILENAME.
-  **Note:**
-  All the above options are mutually exclusive. If they are used together, the
-  results are currently unpredictable.
-
+* **-a, --autoname**  
+  Pull the TOPIC specified by -t and place it into a file whose name is based on the TOPIC title and topic number.
+* **-c, --category CATEGORY**  
+  Operate only on TOPICs in CATEGORY.  Any specified topics that do not match this category will be ignored.
 * **-f &lt;FILENAME&gt;, --file=FILENAME**  
   Sets the filename to be read (-p, -c) or written (-g) as part of the specified
   operation.
+* **-g, --get**  
+  Read a numbered TOPIC into FILENAME; requires -t TOPIC and -f FILENAME.
+* **-h**  
+  Prints program usage information and exits
 * **-k &lt;CONFIG_FILE&gt;, --config=CONFIG_FILE**  
   Sets the yaml configuration file that contains the discourse URL, the user's api-key,
   and the user's name for authentication purposes.  See FILES for a description of the
@@ -64,10 +62,16 @@ is written in python; it requires at least python3 to be installed on the system
   JSON-encoded data to TOPIC_JSON_FILE before converting it to markdown.  Works only with the
   **-g**
   option.
-
-
-* **-h**  
-  Prints program usage information and exits
+* **-n, --new**  
+  Create a new topic and write FILENAME to it; requires -f FILENAME.
+* **-p, --put**  
+  Write FILENAME to TOPIC number; requires -t TOPIC and -f FILENAME.
+* **-r, --srange &lt;TOPIC_NUMBER&gt;**  
+  Specify the minimum topic to be pulled in a range of topics; -a option implied. -R must also be set.
+* **-R, --erange &lt;TOPIC_NUMBER&gt;**  
+  Specify the maximum topic to be pulled in a range of topics; -a option implied. -r must also be set.
+* **-t, --topic &lt;TOPIC_NUMBER&gt;**  
+  Specify the TOPIC number to be used by dpub.
 
 <a name="files"></a>
 
@@ -80,6 +84,9 @@ is written in python; it requires at least python3 to be installed on the system
 **base_url:**https://discourse.&lt;subdomain&gt;.&lt;suffix&gt;  
 **api_username:**&lt;your_username&gt;  
 **api_key:**&lt;api-key**string....................................&gt;**
+
+* **&lt;topic-name-slug-###&gt;**  
+  The file name resulting from the -a command consists of the topic "slug" (the words of the topic name, stripped of punctuation and separated by dashes), with the topic number appended to the end of the filename.
 
 <a name="bugs"></a>
 
@@ -117,4 +124,4 @@ copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software. 
+all copies or substantial portions of the Software.
