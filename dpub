@@ -11,38 +11,51 @@ except ImportError:
     from yaml import Loader, Dumper
 
 parser = OptionParser()
-parser.add_option("-t", "--topic", dest="topic",
-                  help="discourse topic to read or write (with -g or -p)")
-parser.add_option("-g", "--get", action="store_true", dest="get", default=False,
-                  help="read TOPIC into FILENAME; req -t & -f")
-parser.add_option("-p", "--put", action="store_true", dest="put", default=False,
-                  help="write TOPIC from FILENAME into discourse; req -t & -f")
-parser.add_option("-c", "--create", action="store_true", dest="create", default=False,
-                  help="create new topic and write FILENAME to it; req -f")
+parser.add_option("-a", "--autoname", dest="autoname",
+                  help="build filename from topic name+number (with -g; ignores -f)")
+parser.add_option("-c", "--category", dest="category", 
+                  help="only operate on topics in specifed category")
 parser.add_option("-f", "--file", dest="filename",
                   help="file to read (-g) or write (-p, -c)", metavar="FILE")
+parser.add_option("-g", "--get", action="store_true", dest="get", default=False,
+                  help="read TOPIC into FILENAME; req -t & -f")
 parser.add_option("-k", "--config", dest="config_file",
                   help="config file w/URL, api-key, username (default \"dpub.yaml\")")
 parser.add_option("-j", "--json", dest="json_file",
                   help="write post json to JSON_FILE when using -g, before converting")
 parser.add_option("-J", "--JSON", dest="topic_json_file",
                   help="write TOPIC json to TOPIC_JSON_FILE when using -g")
+parser.add_option("-n", "--new", action="store_true", dest="new", default=False,
+                  help="create new topic from filename")
+parser.add_option("-p", "--put", action="store_true", dest="put", default=False,
+                  help="write TOPIC from FILENAME into discourse; req -t & -f")
+parser.add_option("-r", "--srange", dest="srange",
+                  help="minimum topic number to read (with -g)")
+parser.add_option("-R", "--erange", dest="erange",
+                  help="minimum topic number to read (with -g)")
+parser.add_option("-t", "--topic", dest="topic",
+                  help="discourse topic to read or write (with -g or -p)")
 
 (options,args) = parser.parse_args()
 
-# get or put with no topic number
-if( (options.get or options.put) and not options.topic ):
-    parser.print_help()
-    sys.exit()
-
-# get or put or create with no filename
-if( (options.get or options.put or options.create) and not options.filename ):
-    parser.print_help()
-    sys.exit()
-
-# no options at all
-if( not options.get and not options.put and not options.create \
-    and not options.filename and not options.topic):
+# autoname with filename
+if((options.autoname and options.filename) or \
+   (options.autoname and options.put) or \
+   (options.autoname and options.get) or \
+   (options.autoname and options.new) or \
+   (options.get and options.put) or \
+   (options.get and options.new) or \
+   (options.new and options.put) or \
+   (options.put and not options.topic ) or \
+   (options.get and not (options.topic or (options.srange and options.erange))) or \
+   (options.topic and (options.srange or options.erange)) or \
+   ((options.erange and not options.srange) or (options.srange and not options.erange)) or \
+   (options.put and not options.filename) or \
+   ((options.put or options.new) and not options.filename ) or \
+   (options.get and not (options.filename or options.autoname)) or \
+   (not options.get and not options.put and not options.new) or \
+   (options.put  and (options.srange or options.erange)) or \
+   (options.new and (options.topic or options.srange or options.erange))):
     parser.print_help()
     sys.exit()
 
@@ -51,7 +64,7 @@ if(options.config_file):
     config_file = options.config_file
 else:
     config_file = "/etc/dc.yaml"
-cfile = open(config_file,"r")
+cfile = open("/etc/dc.yaml","r")
 config_data = load(cfile, Loader=Loader)
 
 # read the topic, which is required for both get and put
@@ -141,7 +154,6 @@ if( options.put ):
         '-d',
         '@foo.json']
     )
-    
 
 
 

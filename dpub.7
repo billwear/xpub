@@ -22,22 +22,21 @@ by discourse when the new topic is created.
 .RI "is written in python; it requires at least python3 to be installed on the system where it will be used."
 .SH OPTIONS
 .TP
-.B -g, --get
-Read a numbered TOPIC into FILENAME; requires -t TOPIC and -f FILENAME.
+.B -a, --autoname
+Pull the TOPIC specified by -t and place it into a file whose name is based on the TOPIC title and topic number.
 .TP
-.B -p, --put
-Write FILENAME to TOPIC number; requires -t TOPIC and -f FILENAME.
-.TP
-.B -c, --create
-Create a new topic and write FILENAE to it; requires -f FILENAME.
-.B "Note:"
-All the above options are mutually exclusive. If they are used together, the
-results are currently unpredictable.
-.RE
+.B -c, --category CATEGORY
+Operate only on TOPICs in CATEGORY.  Any specified topics that do not match this category will be ignored.
 .TP
 .B -f <FILENAME>, --file=FILENAME
 Sets the filename to be read (-p, -c) or written (-g) as part of the specified
 operation.
+.TP
+.B -g, --get
+Read a numbered TOPIC into FILENAME; requires -t TOPIC and -f FILENAME.
+.TP
+.B -h
+Prints program usage information and exits
 .TP
 .B -k <CONFIG_FILE>, --config=CONFIG_FILE
 Sets the yaml configuration file that contains the discourse URL, the user's api-key,
@@ -62,10 +61,21 @@ to output the
 .RI "JSON-encoded data to TOPIC_JSON_FILE before converting it to markdown.  Works only with the"
 .B -g
 option.
-.PP
 .TP
-.B -h
-Prints program usage information and exits
+.B -n, --new
+Create a new topic and write FILENAME to it; requires -f FILENAME.
+.TP
+.B -p, --put
+Write FILENAME to TOPIC number; requires -t TOPIC and -f FILENAME.
+.TP
+.B -r, --srange <TOPIC_NUMBER>
+Specify the minimum topic to be pulled in a range of topics; -a option implied. -R must also be set.
+.TP
+.B -R, --erange <TOPIC_NUMBER>
+Specify the maximum topic to be pulled in a range of topics; -a option implied. -r must also be set.
+.TP
+.B -t, --topic <TOPIC_NUMBER>
+Specify the TOPIC number to be used by dpub.
 .SH FILES
 .TP
 .B dc.yaml
@@ -78,6 +88,9 @@ Contains the information necessary to authenticate to the correct discourse API:
 .br
 .BR api_key: <api-key string....................................>
 .RE
+.TP
+.B <topic-name-slug-###>
+The file name resulting from the -a command consists of the topic "slug" (the words of the topic name, stripped of punctuation and separated by dashes), with the topic number appended to the end of the filename.
 .SH BUGS
 Currently, the code does not check whether the user input more than one of the mutually
 exclusive options
