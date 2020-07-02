@@ -13,7 +13,7 @@ dpub [OPTION]...
 **dpub**
 gets, puts, and creates topics to/from discourse using the discourse API. It
 converts between discourse markdown and JSON, as appropriate to the other options
-selected.
+selected.  It will not get a discourse topic that has been deleted.
 
 The markdown files retrieved from discourse by
 **dpub**

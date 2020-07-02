@@ -5,6 +5,7 @@
 import subprocess                       # for issuing shell commands
 import json                             # for en/decoding json
 import sys, os                          # for various uses
+import time                             # for sleep() function
 from optparse import OptionParser       # for nice, unix-like options
 from yaml import load, dump             # for handling yaml config file
 try:                                    # also ^^
@@ -169,7 +170,10 @@ if( options.get and options.srange and options.erange ):
 
     # giant for loop to get the topic range specified
     for tn in range( int(options.srange), int(options.erange) + 1):
-    
+
+        # sleep for 2.5 seconds - prevents discourse DDOS rejection
+        time.sleep(2.5)
+        
         # run the shell command to get the topic and retain the result
         proc = subprocess.Popen([
             'curl',
@@ -187,9 +191,15 @@ if( options.get and options.srange and options.erange ):
 
         # read the result into a usable buffer
         output = proc.stdout.read()
+
+        # debug output: what topic were you pulling?
+        print("topic = " + str(tn))
         
         # convert the result to json
-        topic_json = json.loads(output)
+        try:
+            topic_json = json.loads(output)
+        except:
+            continue
         
         # extract the post ID from the topic json
         post_id = topic_json['post_stream']['posts'][0]['id']
@@ -199,6 +209,10 @@ if( options.get and options.srange and options.erange ):
                 continue
         autoname = topic_json['post_stream']['posts'][0]['topic_slug'] + \
             '-' + str(tn) + '.md'
+        deleted_at = topic_json['deleted_at']
+        if(deleted_at):
+            print("post deleted: not pulled from discourse")
+            continue
         
         # if user requested the intermediate topic json, specified filename
         if( options.topic_json_file ):
@@ -272,7 +286,12 @@ if( options.get or options.put ):
     output = proc.stdout.read()
 
     # convert the result to json
-    topic_json = json.loads(output)
+    try:
+        topic_json = json.loads(output)
+    except:
+        print("topic " + str(options.topic) + " doesn't exist; exiting")
+        sys.exit(4)
+
 
     # extract the post ID from the topic json
     post_id = topic_json['post_stream']['posts'][0]['id']
@@ -282,6 +301,11 @@ if( options.get or options.put ):
             print("topic does not match the category specified")
             print("exiting without pulling topic")
             sys.exit()
+    deleted_at = topic_json['deleted_at']
+    if(deleted_at):
+        print("post deleted: not pulled from discourse")
+        sys.exit()
+
     autoname = topic_json['post_stream']['posts'][0]['topic_slug'] + \
         '-' + str(options.topic) + '.md'
     
