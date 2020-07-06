@@ -35,6 +35,9 @@ operation.
 .B -g, --get
 Read a numbered TOPIC into FILENAME; requires -t TOPIC and -f FILENAME.
 .TP
+.B -G
+Get (-g) or put (-p) a markdown file whose title is indicated with -T and whose topic is -t; user must be in the an already prepared offline git directory
+.TP
 .B -h
 Prints program usage information and exits
 .TP
@@ -75,6 +78,9 @@ Specify the minimum topic to be pulled in a range of topics; -a option implied. 
 Specify the maximum topic to be pulled in a range of topics; -a option implied. -r must also be set.
 .TP
 .B -t, --topic <TOPIC_NUMBER>
+Specify the TOPIC number to be used by dpub.
+.TP
+.B -T, --topic_title <TOPIC_TITLE>
 Specify the TOPIC number to be used by dpub.
 .SH FILES
 .TP
