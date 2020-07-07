@@ -8,24 +8,31 @@ dpub [command] [source] [options]
 <ul>
 <li>pull - Pull a document</li>
 <ul>
-<li>github
+<li>github - pull a markdown document from github, by name.  A local github must be linked origin/master, and SSH authentication must be set up.
+<ul>
+<li>file=<em>filename</em> (required)
+</ul>
+<li>discourse - pull a markdown document from discourse, by topic number. The discourse URL & auth must be in a YAML file (see below).
+<ul>
+<li>file=<em>filename</em> (required)
+<li>topic=<em>topic number</em> (required)
+<li>config=<em>config file</em> (optional, defaults to /etc/dc.yaml)
+</ul>
 </ul>
 <li>push - Push a document</li>
+<ul>
+<li>github - push a markdown document to github, by name. A local github must be linked origin/master, and SSH authentication must be set up.
+<ul>
+<li>file=<em>filename</em> (required)
+</ul>
+<li>discourse - push a markdown document to discourse, by topic number. The discourse URL & auth must be in a YAML file (see below).
+<ul>
+<li>file=<em>filename</em> (required)
+<li>topic=<em>topic number</em> (required); set to "new" to create a new topic
+<li>config=<em>config file</em> (optional, defaults to /etc/dc.yaml)
+</ul>
+</ul>
 
-<dt>Available sources</dt>
-github: Push or pull a markdown document <> github. A local github must be linked origin/master, and SSH authentication must be set up.<br/
-discourse: Push or pull a markdown document <> a discourse topic. The discourse URL & auth must be in a YAML file (see below).</dd>
-
-<dt>Available options</dt>
-<file=<filename>        Markdown file to push or pull
-                          - required for all sources
-  topic=<topic-number>   Discourse topic number push target
-                          - required for discourse
-			  - set to "new" to create a new topic
-  [config=<configfile>]  Config file containing URL & auth info
-                          - optional for discourse
-                          - defaults to /etc/dc.yaml
-</dl>
 
 ### Copyright
 MIT License
