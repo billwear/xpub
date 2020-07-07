@@ -1,6 +1,7 @@
 ## dpub
 Command line client for document publishing, especially with Discourse and Github.
 
+<dl>
 <dt>Usage</dt>
 <dd>dpub [command] [source] [options]</dd>
 
@@ -8,6 +9,7 @@ Command line client for document publishing, especially with Discourse and Githu
 <dd>pull: Pull a document</dd>
 <dd>push: Push a document</dd>
 
+</dl>
 ### Available sources
   github     Push or pull a markdown document <> github<br/>
               - local github must be linked origin/master<br/>
