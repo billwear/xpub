@@ -6,8 +6,8 @@ Command line client for document publishing, especially with Discourse and Githu
 <dd>dpub [command] [source] [options]</dd>
 
 <dt>Available commands</dt>
-<dd>pull: Pull a document</dd>
-<dd>push: Push a document</dd>
+<dd>pull: Pull a document</br>
+push: Push a document</dd>
 
 </dl>
 ### Available sources
