@@ -1,24 +1,21 @@
 ## dpub
 Command line client for document publishing, especially with Discourse and Github.
 
-<dl>
-<dt>Usage</dt>
-<dd>dpub [command] [source] [options]</dd>
+***Usage***<br/>
+dpub [command] [source] [options]
 
-<dt>Available commands</dt>
-<dd>pull: Pull a document</br>
-push: Push a document</dd>
+***Available commands***
+* **pull**
+Pull a document
+* **push** 
+Push a document
 
-</dl>
-### Available sources
-  github     Push or pull a markdown document <> github<br/>
-              - local github must be linked origin/master<br/>
-	      - SSH authentication must be set up<br/>
-  discourse  Push or pull a markdown document <> a discourse topic
-              - URL & auth must be in a YAML file (see below)
+<dt>Available sources</dt>
+github: Push or pull a markdown document <> github. A local github must be linked origin/master, and SSH authentication must be set up.<br/
+discourse: Push or pull a markdown document <> a discourse topic. The discourse URL & auth must be in a YAML file (see below).</dd>
 
-**Available options:**
-  file=<filename>        Markdown file to push or pull
+<dt>Available options</dt>
+<file=<filename>        Markdown file to push or pull
                           - required for all sources
   topic=<topic-number>   Discourse topic number push target
                           - required for discourse
@@ -26,8 +23,9 @@ push: Push a document</dd>
   [config=<configfile>]  Config file containing URL & auth info
                           - optional for discourse
                           - defaults to /etc/dc.yaml
+</dl>
 
-# Copyright
+### Copyright
 MIT License
 Copyright (c) 2020 Bill Wear
 Permission is hereby granted, free of charge, to any person obtaining a copy
