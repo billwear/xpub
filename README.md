@@ -1,13 +1,12 @@
 ## dpub
+Command line client for document publishing, especially with Discourse and Github.
 
-Command line client for document publishing.
+<dt>Usage</dt>
+<dd>dpub [command] [source] [options]</dd>
 
-### Usage
-dpub [command] [source] [options]
-
-### Available commands
-  pull  Pull a document<br/>
-  push  Push a document
+<dt>Available commands</dt>
+<dd>pull: Pull a document</dd>
+<dd>push: Push a document</dd>
 
 ### Available sources
   github     Push or pull a markdown document <> github<br/>
