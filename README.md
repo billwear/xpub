@@ -5,9 +5,8 @@ Command line client for document publishing, especially with Discourse and Githu
 dpub [command] [source] [options]
 
 ***Available commands***
-|:----|:----|
-**pull** | Pull a document
- **push** | Push a document
+**pull** - Pull a document<br/>
+**push** - Push a document<br/>
 
 <dt>Available sources</dt>
 github: Push or pull a markdown document <> github. A local github must be linked origin/master, and SSH authentication must be set up.<br/
