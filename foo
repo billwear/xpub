@@ -9,7 +9,7 @@ parser = argparse.ArgumentParser(
     epilog="For simplicity, options which do not apply to a command are ignored.")
 
 # level 1 subparser: push / pull / convert / split
-subparserL1 = parser.add_subparsers()
+subparserL1 = parser.add_subparsers(dest="l1")
 parser_push = subparserL1.add_parser(
     'push',
     help="push a file to a destination"
@@ -28,7 +28,7 @@ parser_split = subparserL1.add_parser(
 )
 
 # level 2 push subparser: github / discourse
-push_sub = parser_push.add_subparsers()
+push_sub = parser_push.add_subparsers(dest="push_l2")
 parser_push_github = push_sub.add_parser(
     'github',
     help="github corresponding to current local clone directory"
@@ -80,7 +80,7 @@ parser_push_discourse.add_argument(
 )
 
 # level 2 pull subparser: github / discourse
-pull_sub = parser_pull.add_subparsers()
+pull_sub = parser_pull.add_subparsers(dest="pull_l2")
 parser_pull_github = pull_sub.add_parser(
     'github',
     help="github corresponding to current local clone directory"
@@ -149,4 +149,16 @@ parser_pull_discourse.add_argument(
     help='store post JSON in "post.json" (useless with -a)'
 )
 
-parser.parse_args()
+args = parser.parse_args()
+
+if(args.l1 == "push"):
+    if(args.push_l2 == "discourse"):
+        print("push discourse")
+    elif(args.push_l2 == "github"):
+        print("push github")
+elif(args.l1 == "pull"):
+    if(args.pull_l2 == "discourse"):
+        print("pull discourse")
+    elif(args.pull_l2 == "github"):
+        print("pull github")
+    
