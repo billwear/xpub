@@ -63,7 +63,6 @@ def github_pull():
         '--',
         filename]
     )
-
     
 def gh_push_help():
     print("\n")
