@@ -1,6 +1,12 @@
 #!/usr/bin/python3
 
 import argparse
+import sys, subprocess, json, os, time
+from yaml import load, dump      
+try:                             
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    from yaml import Loader, Dumper
 
 # the base parser: just holds subparsers
 parser = argparse.ArgumentParser(
@@ -34,8 +40,8 @@ parser_push_github = push_sub.add_parser(
     help="github corresponding to current local clone directory"
 )
 ppg_gr = parser_push_github.add_mutually_exclusive_group(required=True)
-ppg_gr.add_argument('-f','--file',nargs=1,help="filename to push to github")
-ppg_gr.add_argument('-a','--all', action='store_true',help="push all files to github")
+ppg_gr.add_argument('-f','--file',nargs=1,help="filename to push to github",dest="gitpushfile")
+ppg_gr.add_argument('-a','--all', action='store_true',help="push all files to github",dest="gitpushall")
 parser_push_discourse = push_sub.add_parser(
     'discourse',
     help='discourse found at URL specified in config file'
@@ -86,8 +92,8 @@ parser_pull_github = pull_sub.add_parser(
     help="github corresponding to current local clone directory"
 )
 ppg_grp = parser_pull_github.add_mutually_exclusive_group(required=True)
-ppg_grp.add_argument('-f','--file',nargs=1,help="filename to pull from github")
-ppg_grp.add_argument('-a','--all', action='store_true',help="pull all files from github")
+ppg_grp.add_argument('-f','--file',nargs=1,help="filename to pull from github",dest="gitfile")
+ppg_grp.add_argument('-a','--all', action='store_true',help="pull all files from github",dest="gitall")
 parser_pull_discourse = pull_sub.add_parser(
     'discourse',
     help='discourse found at URL specified in config file'
@@ -97,68 +103,341 @@ ppg_grp2.add_argument(
     '-f',
     '--file',
     nargs=1,
-    help="filename to pull from discourse"
+    help="filename to pull from discourse",
+    dest="discpullfile"
 )
 ppg_grp2.add_argument(
     '-a',
     '--all',
     action='store_true',
-    help="pull all files in discourse (optionally matching category)"
+    help="pull all files in discourse (optionally matching category)",
+    dest="discpullall"
 )
 ppg_grp3 = parser_pull_discourse.add_mutually_exclusive_group(required=True)
 ppg_grp3.add_argument(
     '-t',
     '--tnum',
     nargs=1,
-    help="topic number from which to pull the file"
+    help="topic number from which to pull the file",
+    dest="discpulltopic",
+    type=int
 )
 ppg_grp3.add_argument(
     '-b',
     '--bulk',
     action='store_true',
-    help='confirms bulk pull indicated with "-a"'
+    help='confirms bulk pull indicated with "-a"',
+    dest="discpullbulk"
 )
 parser_pull_discourse.add_argument(
     '-k',
     '--cat',
     nargs=1,
-    help="restrict discourse category to CAT"
+    help="restrict discourse category to CAT",
+    dest="discpullcat",
+    type=int
 )
 parser_pull_discourse.add_argument(
     '-l',
     '--live',
     action='store_true',
-    help="do not pull deleted articles"
+    help="do not pull deleted articles",
+    dest="discnodeleted"
 )
 parser_pull_discourse.add_argument(
     '-c',
     '--cfg',
     nargs=1,
-    help="alternate config file with discourse URL & auth params"
+    help="alternate config file with discourse URL & auth params",
+    dest="discpullconfigfile"
 )
 parser_pull_discourse.add_argument(
     '-j',
     '--json',
     action='store_true',
-    help='store topic JSON in "topic.json" (useless with -a)'
+    help='store topic JSON in "topic.json" (useless with -a)',
+    dest="disctopicjson"
 )
 parser_pull_discourse.add_argument(
     '-J',
     '--JSON',
     action='store_true',
-    help='store post JSON in "post.json" (useless with -a)'
+    help='store post JSON in "post.json" (useless with -a)',
+    dest="discpostjson"
 )
 
 args = parser.parse_args()
 
+# push
 if(args.l1 == "push"):
+
+    # push discourse
     if(args.push_l2 == "discourse"):
         print("push discourse")
+
+    # push github
     elif(args.push_l2 == "github"):
-        print("push github")
+        if(args.gitpushall == True):
+            response = subprocess.check_output([
+                'git',
+                'add',
+                '.']
+            )
+            try:
+                response = subprocess.check_output([
+                    'git',
+                    'commit',
+                    '-m',
+                    'bot-push']
+                )
+            except:
+                print("up to date")
+                sys.exit()
+            response = subprocess.check_output([
+                'git',
+                'push']
+            )            
+        else:
+            filename = str(args.gitpushfile[0])
+            response = subprocess.check_output([
+                'git',
+                'add',
+                filename]
+            )
+            try:
+                response = subprocess.check_output([
+                    'git',
+                    'commit',
+                    '-m',
+                    'bot-push']
+                )
+            except:
+                print("up to date")
+                sys.exit()
+            response = subprocess.check_output([
+                'git',
+                'push']
+            )
+
+# pull
 elif(args.l1 == "pull"):
+
+    #pull discourse
     if(args.pull_l2 == "discourse"):
-        print("pull discourse")
+        if(args.discpullall == True):
+            try:
+                config = str(args.discpullconfig[0])
+            except:
+                config = "/etc/dc.yaml"
+
+            # read config file to get api-key, api-usr, and discourse url
+            cfile = open("/etc/dc.yaml","r")
+            config_data = load(cfile, Loader=Loader)
+            cfile.close();
+
+            # giant for loop to get the topic range specified
+            for tn in range( 1, 1700 ):
+
+                # sleep for 2.5 seconds - prevents discourse DDOS rejection
+                time.sleep(2.5)
+
+                # run the shell command to get the topic and retain the result
+                proc = subprocess.Popen([
+                    'curl',
+                    '-X',
+                    'GET',
+                    '-H',
+                    'Api-Key: ' + config_data['api_key'],
+                    '-H',
+                    'Api-Username: ' + config_data['api_username'],
+                    '-H',
+                    'Content-Type: application/json',
+                    config_data['base_url'] + '/t/{'+str(tn)+'}.json'],
+                                        stdout=subprocess.PIPE
+                )
+
+                # read the result into a usable buffer
+                output = proc.stdout.read()
+
+                # debug output: what topic were you pulling?
+                print("topic = " + str(tn))
+        
+                # convert the result to json
+                try:
+                    topic_json = json.loads(output)
+                except:
+                    continue
+        
+                # extract the post ID from the topic json
+                post_id = topic_json['post_stream']['posts'][0]['id']
+                category_id = topic_json['category_id']
+                if(args.discpullcat):
+                    if((category_id is None)
+                       or (int(arg.discpullcat) != int(category_id))):
+                        continue
+                    autoname = topic_json['post_stream']['posts'][0]['topic_slug'] + \
+                        '-' + str(tn) + '.md'
+                    deleted_at = topic_json['deleted_at']
+                    if(deleted_at):
+                        print("post deleted: not pulled from discourse")
+                        continue
+                    outfile_name = autoname;
+        
+                    # read the post using the api, retaining the return value
+                    proc2 = subprocess.Popen([
+                        'curl',
+                        '-X',
+                        'GET',
+                        '-H',
+                        'Api-Key: ' + config_data['api_key'],
+                        '-H',
+                        'Api-Username: ' + config_data['api_username'],
+                        '-H',
+                        'Content-Type: application/json',
+                        config_data['base_url'] + '/posts/{'+str(post_id)+'}.json'],
+                                             stdout=subprocess.PIPE
+                    )
+            
+                    # copy the return value to a suitable buffer
+                    output2 = proc2.stdout.read()
+        
+                    # convert the returned post to json
+                    post_json = json.loads(output2)
+        
+                    # extract the article markdown from the json output
+                    raw = post_json['raw']
+        
+                    # write the article markdown to the specified filename
+                    f = open(outfile_name, "w")
+                    f.write(str(raw))
+                    f.close()
+                    
+            # exit now, as this run is finished
+            sys.exit(0)
+        else:
+            filename = str(args.discpullfile[0])
+            topic = args.discpulltopic[0]
+            try:
+                config = str(args.discpullconfig[0])
+            except:
+                config = "/etc/dc.yaml"
+
+            # read config file to get api-key, api-usr, and discourse url
+            cfile = open("/etc/dc.yaml","r")
+            config_data = load(cfile, Loader=Loader)
+            cfile.close();
+
+            # run the shell command to get the topic and retain the result
+            proc = subprocess.Popen([
+                'curl',
+                '-X',
+                'GET',
+                '-H',
+                'Api-Key: ' + config_data['api_key'],
+                '-H',
+                'Api-Username: ' + config_data['api_username'],
+                '-H',
+                'Content-Type: application/json',
+                config_data['base_url'] + '/t/{'+str(topic)+'}.json'],
+                                    stdout=subprocess.PIPE
+            )
+
+            # read the result into a usable buffer
+            output = proc.stdout.read()
+
+            # convert the result to json
+            try:
+                topic_json = json.loads(output)
+            except:
+                print("topic " + str(topic) + " doesn't exist; exiting")
+                sys.exit(4)
+
+
+            # extract the post ID from the topic json
+            post_id = topic_json['post_stream']['posts'][0]['id']
+            category_id = topic_json['category_id']
+            deleted_at = topic_json['deleted_at']
+            if(deleted_at):
+                print("post deleted: not pulled from discourse")
+                sys.exit()
+                
+            autoname = topic_json['post_stream']['posts'][0]['topic_slug'] + \
+                '-' + str(topic) + '.md'
+            
+            # compute the output filename
+            # if(options.autoname):
+            #     outfile_name = autoname;
+            # else:
+            #     outfile_name = options.filename
+            outfile_name = filename
+            
+            # if user requested the intermediate topic json, specified filename
+            if(args.disctopicjson):
+                f2 = open("topic.json", "w")
+                f2.write(str(topic_json))
+                f2.close()
+
+            # read the post using the api, retaining the return value
+            proc2 = subprocess.Popen([
+                'curl',
+                '-X',
+                'GET',
+                '-H',
+                'Api-Key: ' + config_data['api_key'],
+                '-H',
+                'Api-Username: ' + config_data['api_username'],
+                '-H',
+                'Content-Type: application/json',
+                config_data['base_url'] + '/posts/{'+str(post_id)+'}.json'],
+                                     stdout=subprocess.PIPE
+            )
+            
+            # copy the return value to a suitable buffer
+            output2 = proc2.stdout.read()
+            
+            # convert the returned post to json
+            post_json = json.loads(output2)
+            
+            # if user req intermediate post json, write it to the specified filename
+            if( args.discpostjson ):
+                f2 = open("post.json", "w")
+                f2.write(str(post_json))
+                f2.close()
+            
+            # extract the article markdown from the json output
+            raw = post_json['raw']
+            
+            # write the article markdown to the specified filename
+            f = open(outfile_name, "w")
+            f.write(str(raw))
+            f.close()
+
+    # pull github
     elif(args.pull_l2 == "github"):
-        print("pull github")
+        fileflag = args.gitall
+        if(fileflag == True):
+            response = subprocess.check_output([
+                'git',
+                'fetch']
+            )
+            response = subprocess.check_output([
+                'git',
+                'checkout',
+                'origin/master',
+                '--',
+                '.']
+            )
+        else:
+            filename = str(args.gitfile[0])
+            response = subprocess.check_output([
+                'git',
+                'fetch']
+            )
+            response = subprocess.check_output([
+                'git',
+                'checkout',
+                'origin/master',
+                '--',
+                filename]
+            )
     
