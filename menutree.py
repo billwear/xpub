@@ -58,13 +58,6 @@ def setmenu():
         help="filename to push to discourse",
         dest="discpushfile"
     )
-    ppg_gr2.add_argument(
-        '-a',
-        '--all',
-        action='store_true',
-        help="push all files in cwd, using topics embedded in filenames",
-        dest="discpushall"
-    )
     ppg_gr3 = parser_push_discourse.add_mutually_exclusive_group(required=True)
     ppg_gr3.add_argument(
         '-t',
@@ -80,13 +73,6 @@ def setmenu():
         action='store_true',
         help="push file to discourse, creating a new topic in the process",
         dest="discpushnew"
-    )
-    ppg_gr3.add_argument(
-        '-b',
-        '--bulk',
-        action='store_true',
-        help='confirms bulk push indicated with "-a"',
-        dest="discpushbulk"
     )
     parser_push_discourse.add_argument(
         '-c',
@@ -118,11 +104,12 @@ def setmenu():
         dest="discpullfile"
     )
     ppg_grp2.add_argument(
-        '-a',
-        '--all',
-        action='store_true',
-        help="pull all files in discourse (optionally matching category)",
-        dest="discpullall"
+        '-r',
+        '--range',
+        nargs=2,
+        help="-r <start> <end>: pull topics from start to end",
+        dest="discpullrange",
+        type=int
     )
     ppg_grp3 = parser_pull_discourse.add_mutually_exclusive_group(required=True)
     ppg_grp3.add_argument(

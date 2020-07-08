@@ -48,7 +48,6 @@ def push_discourse():
         print("topic " + str(topic) + " doesn't exist; exiting")
         sys.exit(4)
 
-
     # extract the post ID from the topic json
     post_id = topic_json['post_stream']['posts'][0]['id']
     category_id = topic_json['category_id']
@@ -153,7 +152,10 @@ def push_github():
         )
 
 def pull_discourse():
-    if(args.discpullall == True):
+    if(args.discpullrange != None):
+        start = args.discpullrange[0]
+        end = args.discpullrange[1]
+        
         try:
             config = str(args.discpullconfig[0])
         except:
@@ -165,7 +167,7 @@ def pull_discourse():
         cfile.close();
         
         # giant for loop to get the topic range specified
-        for tn in range( 1, 1700 ):
+        for tn in range( start, end+1 ):
             
             # sleep for 2.5 seconds - prevents discourse DDOS rejection
             time.sleep(2.5)
