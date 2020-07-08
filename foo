@@ -30,10 +30,10 @@ def push_github():
         except:
             print("up to date")
             sys.exit()
-            response = subprocess.check_output([
-                'git',
-                'push']
-            )            
+        response = subprocess.check_output([
+            'git',
+            'push']
+        )            
     else:
         filename = str(args.gitpushfile[0])
         response = subprocess.check_output([
