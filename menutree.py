@@ -75,6 +75,21 @@ def setmenu():
         dest="discpushnew"
     )
     parser_push_discourse.add_argument(
+        '-T',
+        '--title',
+        nargs=1,
+        help="title for new document",
+        dest="discpushnewtitle"
+    )
+    parser_push_discourse.add_argument(
+        '-k',
+        '--cat',
+        nargs=1,
+        type=int,
+        help="category for new document",
+        dest="discpushnewcategory"
+    )
+    parser_push_discourse.add_argument(
         '-c',
         '--cfg',
         nargs=1,
