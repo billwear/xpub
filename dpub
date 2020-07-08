@@ -1,137 +1,28 @@
 #!/usr/bin/python3
 
+import argparse
 import sys, subprocess, json, os, time
-from optparse import OptionParser
 from yaml import load, dump      
 try:                             
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     from yaml import Loader, Dumper
 
-argc = len(sys.argv) - 1
+from menutree import setmenu
 
-def help():
-    print("\n")
-    print("Description:")
-    print("  Command line client for document publishing\n")
-    print("Usage:")
-    print("  dpub [command] [source] [options]\n")
-    print("Available commands:")
-    print("  pull  Pull a document")
-    print("  push  Push a document")
-    print("\n")
-    sys.exit()
-
-def find_arg(name):
-    for i in range(3, len(sys.argv)):
-        arg = sys.argv[i].split('=')
-        argname = arg[0]
-        if(argname == name):
-            try:
-                retval = arg[1]
-            except:
-                retval = ""
-            return retval
-    return ""
-
-def gh_pull_help():
-    print("\n")
-    print("Description:")
-    print("  Pull a markdown document from github repo")
-    print("  (must be in local github directory)\n")
-    print("Usage:")
-    print("  dpub pull github [options]\n")
-    print("Available options:")
-    print("  file=<filename>  (required) Markdown file to checkout and pull\n")
-    sys.exit()
-    
-def github_pull():
-    if( argc < 3 or sys.argv[3] == "help" ):
-        gh_pull_help()
-    else:
-        filename = find_arg("file")
-        if(filename == ""):
-            gh_pull_help()
-    response = subprocess.check_output([
-        'git',
-        'fetch']
-    )
-    response = subprocess.check_output([
-        'git',
-        'checkout',
-        'origin/master',
-        '--',
-        filename]
-    )
-    
-def gh_push_help():
-    print("\n")
-    print("Description:")
-    print("  Push a markdown document to a github repo")
-    print("  (must be in local github directory)\n")
-    print("Usage:")
-    print("  dpub push github [options]\n")
-    print("Available options:")
-    print("  file=<filename>  (required) Markdown file to commit and push\n")
-    sys.exit()
-    
-def github_push():
-    if( argc < 3 or sys.argv[3] == "help" ):
-        gh_pull_help()
-    else:
-        filename = find_arg("file")
-        if(filename == ""):
-            help()
-    response = subprocess.check_output([
-        'git',
-        'add',
-        filename]
-    )
-    response = subprocess.check_output([
-        'git',
-        'commit',
-        '-m',
-        'bot-push']
-    )
-    response = subprocess.check_output([
-        'git',
-        'push']
-    )
-    
-def dc_pull_help():
-    print("\n")
-    print("Description:")
-    print("  Pull a markdown document from discourse")
-    print("Usage:")
-    print("  dpub pull discourse [options]\n")
-    print("Available options:")
-    print("  file=<filename>        (required) Local markdown file to push")
-    print("  topic=<topic-number>   (required) Discourse topic number push target")
-    print('                           (set to "new" to create new topic')
-    print("  [config=<configfile>]  (optional) Config file containing URL & auth info")
-    print("                           (defaults to /etc/dc.yaml)")
-    print("\n")
-    sys.exit()
-    
-def discourse_pull():
-    if( argc < 4 or sys.argv[3] == "help" ):
-        dc_pull_help()
-    else:
-        filename = find_arg("file")
-        if(filename == ""):
-            help()
-        topic = find_arg("topic")
-        if(topic == ""):
-            help()
-        config = find_arg("config")
-        if(config == ""):
-            config = "/etc/dc.yaml"
+def push_discourse():
+    filename = str(args.discpushfile[0])
+    topic = args.discpushtopic[0]
+    try:
+        config = str(args.discpushconfig[0])
+    except:
+        config = "/etc/dc.yaml"
 
     # read config file to get api-key, api-usr, and discourse url
     cfile = open("/etc/dc.yaml","r")
     config_data = load(cfile, Loader=Loader)
     cfile.close();
-
+        
     # run the shell command to get the topic and retain the result
     proc = subprocess.Popen([
         'curl',
@@ -144,7 +35,7 @@ def discourse_pull():
         '-H',
         'Content-Type: application/json',
         config_data['base_url'] + '/t/{'+str(topic)+'}.json'],
-        stdout=subprocess.PIPE
+                            stdout=subprocess.PIPE
     )
 
     # read the result into a usable buffer
@@ -157,7 +48,6 @@ def discourse_pull():
         print("topic " + str(topic) + " doesn't exist; exiting")
         sys.exit(4)
 
-
     # extract the post ID from the topic json
     post_id = topic_json['post_stream']['posts'][0]['id']
     category_id = topic_json['category_id']
@@ -169,137 +59,8 @@ def discourse_pull():
     autoname = topic_json['post_stream']['posts'][0]['topic_slug'] + \
         '-' + str(topic) + '.md'
 
-    # compute the output filename
-    # if(options.autoname):
-    #     outfile_name = autoname;
-    # else:
-    #     outfile_name = options.filename
     outfile_name = filename
     
-    # if user requested the intermediate topic json, specified filename
-    # if( options.topic_json_file ):
-    #     f2 = open(options.topic_json_file, "w")
-    #     f2.write(str(topic_json))
-    #     f2.close()
-
-    # read the post using the api, retaining the return value
-    proc2 = subprocess.Popen([
-        'curl',
-        '-X',
-        'GET',
-        '-H',
-        'Api-Key: ' + config_data['api_key'],
-        '-H',
-        'Api-Username: ' + config_data['api_username'],
-        '-H',
-        'Content-Type: application/json',
-        config_data['base_url'] + '/posts/{'+str(post_id)+'}.json'],
-                             stdout=subprocess.PIPE
-    )
-
-    # copy the return value to a suitable buffer
-    output2 = proc2.stdout.read()
-        
-    # convert the returned post to json
-    post_json = json.loads(output2)
-        
-    # if user requested intermediate post json, write it to the specified filename
-    # if( options.json_file ):
-    #     f2 = open(options.json_file, "w")
-    #     f2.write(str(post_json))
-    #     f2.close()
-            
-    # extract the article markdown from the json output
-    raw = post_json['raw']
-            
-    # write the article markdown to the specified filename
-    f = open(outfile_name, "w")
-    f.write(str(raw))
-    f.close()
-
-def dc_push_help():
-    print("\n")
-    print("Description:")
-    print("  Push a markdown document to discourse")
-    print("Usage:")
-    print("  dpub push discourse [options]\n")
-    print("Available options:")
-    print("  file=<filename>        (required) Local markdown file to push")
-    print("  topic=<topic-number>   (required) Discourse topic number push target")
-    print('                           (set to "new" to create new topic')
-    print("  [config=<configfile>]  (optional) Config file containing URL & auth info")
-    print("                           (defaults to /etc/dc.yaml)")
-    print("\n")
-    sys.exit()
-    
-def discourse_push():
-    if( argc < 4 or sys.argv[3] == "help" ):
-        dc_push_help()
-    else:
-        filename = find_arg("file")
-        if(filename == ""):
-            help()
-        topic = find_arg("topic")
-        if(topic == ""):
-            help()
-        config = find_arg("config")
-        if(config == ""):
-            config = "/etc/dc.yaml"
-    # read config file to get api-key, api-usr, and discourse url
-    cfile = open("/etc/dc.yaml","r")
-    config_data = load(cfile, Loader=Loader)
-    cfile.close();
-
-    # run the shell command to get the topic and retain the result
-    proc = subprocess.Popen([
-        'curl',
-        '-X',
-        'GET',
-        '-H',
-        'Api-Key: ' + config_data['api_key'],
-        '-H',
-        'Api-Username: ' + config_data['api_username'],
-        '-H',
-        'Content-Type: application/json',
-        config_data['base_url'] + '/t/{'+str(topic)+'}.json'],
-        stdout=subprocess.PIPE
-    )
-
-    # read the result into a usable buffer
-    output = proc.stdout.read()
-
-    # convert the result to json
-    try:
-        topic_json = json.loads(output)
-    except:
-        print("topic " + str(topic) + " doesn't exist; exiting")
-        sys.exit(4)
-
-
-    # extract the post ID from the topic json
-    post_id = topic_json['post_stream']['posts'][0]['id']
-    category_id = topic_json['category_id']
-    deleted_at = topic_json['deleted_at']
-    if(deleted_at):
-        print("post deleted: not pulled from discourse")
-        sys.exit()
-
-    autoname = topic_json['post_stream']['posts'][0]['topic_slug'] + \
-        '-' + str(topic) + '.md'
-
-    # compute the output filename
-    # if(options.autoname):
-    #     outfile_name = autoname;
-    # else:
-    #     outfile_name = options.filename
-    outfile_name = filename
-    
-    # if user requested the intermediate topic json, specified filename
-    # if( options.topic_json_file ):
-    #     f2 = open(options.topic_json_file, "w")
-    #     f2.write(str(topic_json))
-    #     f2.close()
-
     # load and convert the specified markdown file
     f = open(outfile_name, "r")
     markdown = f.read()
@@ -322,12 +83,6 @@ def discourse_push():
     # close the temp file for completeness
     f.close()
         
-    # if user requested intermediate post json, write it to the specified filename
-    # if( options.json_file ):
-        # f2 = open(options.json_file, "w")
-        # f2.write(str(post_json))
-        # f2.close()
-
     # set the url and auth data as read from the yaml config file
     url = config_data['base_url'] + '/posts/{'+str(post_id)+'}.json'
     apikey = 'Api-Key: ' + config_data['api_key']
@@ -352,65 +107,281 @@ def discourse_push():
     # remove the temporary json file
     os.remove("foo.json")
 
-def pull_help():
-    print("\n")
-    print("Description:")
-    print("  Pull a markdown document from a repository\n")
-    print("Usage:")
-    print("  dpub pull [sources]\n")
-    print("Available sources:")
-    print("  github     Pull a markdown document from github")
-    print("  discourse  Pull a markdown document from a discourse topic")
-    print("\n")
-    sys.exit()
-    
-def pull():
-    if( argc < 2 or sys.argv[2] == 'help'):
-        pull_help()
+def push_github():
+    if(args.gitpushall == True):
+        response = subprocess.check_output([
+            'git',
+            'add',
+            '.']
+        )
+        try:
+            response = subprocess.check_output([
+                'git',
+                'commit',
+                '-m',
+                'bot-push']
+            )
+        except:
+            print("up to date")
+            sys.exit()
+        response = subprocess.check_output([
+            'git',
+            'push']
+        )            
     else:
-        switcher = {
-            "github": github_pull,
-            "discourse": discourse_pull
-        }
-        f2 = switcher.get( sys.argv[2], lambda: help() )
-        f2()
+        filename = str(args.gitpushfile[0])
+        response = subprocess.check_output([
+            'git',
+            'add',
+            filename]
+        )
+        try:
+            response = subprocess.check_output([
+                'git',
+                'commit',
+                '-m',
+                'bot-push']
+            )
+        except:
+            print("up to date")
+            sys.exit()
 
-def push_help():
-    print("\n")
-    print("Description:")
-    print("  Push a markdown document to a repository\n")
-    print("Usage:")
-    print("  dpub push [sources]\n")
-    print("Available sources:")
-    print("  github     Push a markdown document to github")
-    print("  discourse  Push a markdown document to a discourse topic")
-    print("\n")
-    sys.exit()
-    
-def push():
-    if( argc < 2 or sys.argv[2] == 'help'):
-        push_help()
+        response = subprocess.check_output([
+            'git',
+            'push']
+        )
+
+def pull_discourse():
+    if(args.discpullrange != None):
+        start = args.discpullrange[0]
+        end = args.discpullrange[1]
+        
+        try:
+            config = str(args.discpullconfig[0])
+        except:
+            config = "/etc/dc.yaml"
+
+        # read config file to get api-key, api-usr, and discourse url
+        cfile = open("/etc/dc.yaml","r")
+        config_data = load(cfile, Loader=Loader)
+        cfile.close();
+        
+        # giant for loop to get the topic range specified
+        for tn in range( start, end+1 ):
+            
+            # sleep for 2.5 seconds - prevents discourse DDOS rejection
+            time.sleep(2.5)
+            
+            # run the shell command to get the topic and retain the result
+            proc = subprocess.Popen([
+                'curl',
+                '-X',
+                'GET',
+                '-H',
+                'Api-Key: ' + config_data['api_key'],
+                '-H',
+                'Api-Username: ' + config_data['api_username'],
+                '-H',
+                'Content-Type: application/json',
+                config_data['base_url'] + '/t/{'+str(tn)+'}.json'],
+                                    stdout=subprocess.PIPE
+            )
+            
+            # read the result into a usable buffer
+            output = proc.stdout.read()
+            
+            # debug output: what topic were you pulling?
+            print("topic = " + str(tn))
+                
+            # convert the result to json
+            try:
+                topic_json = json.loads(output)
+            except:
+                continue
+            
+            # extract the post ID from the topic json
+            post_id = topic_json['post_stream']['posts'][0]['id']
+            category_id = topic_json['category_id']
+            if(args.discpullcat):
+                if((category_id is None)
+                   or (int(arg.discpullcat) != int(category_id))):
+                    continue
+            autoname = topic_json['post_stream']['posts'][0]['topic_slug'] + \
+                '-' + str(tn) + '.md'
+            deleted_at = topic_json['deleted_at']
+            if(deleted_at):
+                print("post deleted: not pulled from discourse")
+                continue
+            outfile_name = autoname;
+                
+            # read the post using the api, retaining the return value
+            proc2 = subprocess.Popen([
+                'curl',
+                '-X',
+                'GET',
+                '-H',
+                'Api-Key: ' + config_data['api_key'],
+                '-H',
+                'Api-Username: ' + config_data['api_username'],
+                '-H',
+                'Content-Type: application/json',
+                config_data['base_url'] + '/posts/{'+str(post_id)+'}.json'],
+                                     stdout=subprocess.PIPE
+            )
+                
+            # copy the return value to a suitable buffer
+            output2 = proc2.stdout.read()
+            
+            # convert the returned post to json
+            post_json = json.loads(output2)
+            
+            # extract the article markdown from the json output
+            raw = post_json['raw']
+            
+            # write the article markdown to the specified filename
+            f = open(outfile_name, "w")
+            f.write(str(raw))
+            f.close()
+                
+        # exit now, as this run is finished
+        sys.exit(0)
     else:
-        switcher = {
-            "github": github_push,
-            "discourse": discourse_push
-        }
-        f2 = switcher.get( sys.argv[2], lambda: help() )
-        f2()
+        filename = str(args.discpullfile[0])
+        topic = args.discpulltopic[0]
+        try:
+            config = str(args.discpullconfig[0])
+        except:
+            config = "/etc/dc.yaml"
 
-mswitcher = {
-    "pull": pull,
-    "push": push
-}
+        # read config file to get api-key, api-usr, and discourse url
+        cfile = open("/etc/dc.yaml","r")
+        config_data = load(cfile, Loader=Loader)
+        cfile.close();
 
-if(argc == 0):
-    help()
-    sys.exit()
+        # run the shell command to get the topic and retain the result
+        proc = subprocess.Popen([
+            'curl',
+            '-X',
+            'GET',
+            '-H',
+            'Api-Key: ' + config_data['api_key'],
+            '-H',
+            'Api-Username: ' + config_data['api_username'],
+            '-H',
+            'Content-Type: application/json',
+            config_data['base_url'] + '/t/{'+str(topic)+'}.json'],
+                                stdout=subprocess.PIPE
+        )
 
-func = mswitcher.get( sys.argv[1], lambda: help() )
+        # read the result into a usable buffer
+        output = proc.stdout.read()
 
-func()
-    
+        # convert the result to json
+        try:
+            topic_json = json.loads(output)
+        except:
+            print("topic " + str(topic) + " doesn't exist; exiting")
+            sys.exit(4)
 
 
+        # extract the post ID from the topic json
+        post_id = topic_json['post_stream']['posts'][0]['id']
+        category_id = topic_json['category_id']
+        deleted_at = topic_json['deleted_at']
+        if(deleted_at):
+            print("post deleted: not pulled from discourse")
+            sys.exit()
+            
+        autoname = topic_json['post_stream']['posts'][0]['topic_slug'] + \
+            '-' + str(topic) + '.md'
+            
+        # compute the output filename
+        # if(options.autoname):
+        #     outfile_name = autoname;
+        # else:
+        #     outfile_name = options.filename
+        outfile_name = filename
+            
+        # if user requested the intermediate topic json, specified filename
+        if(args.disctopicjson):
+            f2 = open("topic.json", "w")
+            f2.write(str(topic_json))
+            f2.close()
+            
+        # read the post using the api, retaining the return value
+        proc2 = subprocess.Popen([
+            'curl',
+            '-X',
+            'GET',
+            '-H',
+            'Api-Key: ' + config_data['api_key'],
+            '-H',
+            'Api-Username: ' + config_data['api_username'],
+            '-H',
+            'Content-Type: application/json',
+            config_data['base_url'] + '/posts/{'+str(post_id)+'}.json'],
+                                 stdout=subprocess.PIPE
+        )
+            
+        # copy the return value to a suitable buffer
+        output2 = proc2.stdout.read()
+            
+        # convert the returned post to json
+        post_json = json.loads(output2)
+            
+        # if user req intermediate post json, write it to the specified filename
+        if( args.discpostjson ):
+            f2 = open("post.json", "w")
+            f2.write(str(post_json))
+            f2.close()
+                
+        # extract the article markdown from the json output
+        raw = post_json['raw']
+            
+        # write the article markdown to the specified filename
+        f = open(outfile_name, "w")
+        f.write(str(raw))
+        f.close()
 
+def pull_github():
+    fileflag = args.gitall
+    if(fileflag == True):
+        response = subprocess.check_output([
+            'git',
+            'fetch']
+        )
+        response = subprocess.check_output([
+            'git',
+            'checkout',
+            'origin/master',
+            '--',
+            '.']
+        )
+    else:
+        filename = str(args.gitfile[0])
+        response = subprocess.check_output([
+            'git',
+            'fetch']
+        )
+        response = subprocess.check_output([
+            'git',
+            'checkout',
+            'origin/master',
+            '--',
+            filename]
+        )
+
+parser = setmenu()
+args = parser.parse_args()
+
+if(args.l1 == "push"):
+    if(args.push_l2 == "discourse"):
+        push_discourse()
+    elif(args.push_l2 == "github"):
+        push_github()
+elif(args.l1 == "pull"):
+    if(args.pull_l2 == "discourse"):
+        pull_discourse()
+    elif(args.pull_l2 == "github"):
+        pull_github()
+            
