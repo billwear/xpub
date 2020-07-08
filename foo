@@ -51,6 +51,7 @@ def push_github():
         except:
             print("up to date")
             sys.exit()
+
             
         response = subprocess.check_output([
             'git',
