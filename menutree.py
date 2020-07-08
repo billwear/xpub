@@ -2,6 +2,7 @@
 
 import argparse
 
+# entry point for importing code
 def setmenu():
     parser = argparse.ArgumentParser(
         "dpub",
@@ -54,38 +55,45 @@ def setmenu():
         '-f',
         '--file',
         nargs=1,
-        help="filename to push to discourse"
+        help="filename to push to discourse",
+        dest="discpushfile"
     )
     ppg_gr2.add_argument(
         '-a',
         '--all',
         action='store_true',
-        help="push all files in cwd, using topics embedded in filenames"
+        help="push all files in cwd, using topics embedded in filenames",
+        dest="discpushall"
     )
     ppg_gr3 = parser_push_discourse.add_mutually_exclusive_group(required=True)
     ppg_gr3.add_argument(
         '-t',
         '--tnum',
         nargs=1,
-        help="topic number to which to push the file"
+        help="topic number to which to push the file",
+        dest="discpushtopic",
+        type=int
     )
     ppg_gr3.add_argument(
         '-n',
         '--new',
         action='store_true',
-        help="push file to discourse, creating a new topic in the process"
+        help="push file to discourse, creating a new topic in the process",
+        dest="discpushnew"
     )
     ppg_gr3.add_argument(
         '-b',
         '--bulk',
         action='store_true',
-        help='confirms bulk push indicated with "-a"'
+        help='confirms bulk push indicated with "-a"',
+        dest="discpushbulk"
     )
     parser_push_discourse.add_argument(
         '-c',
         '--cfg',
         nargs=1,
-        help="alternate config file with discourse URL & auth params"
+        help="alternate config file with discourse URL & auth params",
+        dest="discpushconfig"
     )
 
     # level 2 pull subparser: github / discourse
