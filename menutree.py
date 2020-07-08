@@ -2,6 +2,7 @@
 
 import argparse
 
+# entry point for importing code
 def setmenu():
     parser = argparse.ArgumentParser(
         "dpub",
