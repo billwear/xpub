@@ -96,6 +96,14 @@ def setmenu():
         help="alternate config file with discourse URL & auth params",
         dest="discpushconfig"
     )
+    parser_push_discourse.add_argument(
+        '-m',
+        '--match',
+        action="append",
+        dest="tags",
+        default=[],
+        help='specify conditional tags (one tag per "-m") to enable conditional paragraphs when pushing a discourse file'
+    )
 
     # level 2 pull subparser: github / discourse
     pull_sub = parser_pull.add_subparsers(dest="pull_l2")

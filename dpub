@@ -32,13 +32,30 @@ def push_discourse():
             print('no title entered: use "-T" to specify title for new topic')
             sys.exit()
             
+        # switch in conditional sections based on tags
+        if(args.tags):
+            condfile = "cond_"+filename
+            tag_count = len(args.tags)
+            for x in range(tag_count):
+                grepstring1 = '"<!-- ' + str(args.tags[x] + '"')
+                grepstring2 = '"' + str(args.tags[x]) + '-->"'
+                grepcli = 'grep -v "<!-- ' + str(args.tags[x]) + '" '
+                grepcli += filename + ' | grep -v '
+                grepcli += '"' + str(args.tags[x]) + ' -->" >> '
+                grepcli += condfile
+                os.system(grepcli)
+                cpcli = "cp " + condfile + " tmp.md"
+                os.system(cpcli)
+                filename = "tmp.md"
+    
+            filename = "tmp.md"
+            os.system("rm " + condfile)
+
+                
         # load and convert the specified markdown file
         f = open(filename, "r")
         markdown = f.read()
-
-        # decode the title from the filename
-        
-        
+                
         # pad the markdown to 9000 chars to avoid discourse bug
         outstr = markdown.ljust(9000)
         
@@ -80,8 +97,10 @@ def push_discourse():
             '@foo.json']
         )
 
-        # remove the temporary json file
-#        os.remove("foo.json")
+        # remove the temporary files
+        os.remove("foo.json")
+        os.remove("tmp.md")
+
 
     else:
         # run the shell command to get the topic and retain the result
