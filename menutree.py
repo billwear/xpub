@@ -42,8 +42,8 @@ def setmenu():
         '-f',
         '--file',
         nargs=1,
-        help="filename to push to github",
-        dest="gitpushfile"
+        help="file to push to github",
+        dest="file"
     )
     ppg_gr.add_argument('-a','--all', action='store_true',help="push all files to github",dest="gitpushall")
     parser_push_discourse = push_sub.add_parser(
@@ -55,8 +55,15 @@ def setmenu():
         '-f',
         '--file',
         nargs=1,
-        help="filename to push to discourse",
-        dest="discpushfile"
+        help="file to push to discourse",
+        dest="file"
+    )
+    ppg_gr2.add_argument(
+        '-a',
+        '--all',
+        action='store_true',
+        help="bulk file push, based on title and topic gathered from filename",
+        dest="all"
     )
     ppg_gr3 = parser_push_discourse.add_mutually_exclusive_group(required=True)
     ppg_gr3.add_argument(
@@ -64,7 +71,7 @@ def setmenu():
         '--tnum',
         nargs=1,
         help="topic number to which to push the file",
-        dest="discpushtopic",
+        dest="topic",
         type=int
     )
     ppg_gr3.add_argument(
@@ -72,14 +79,21 @@ def setmenu():
         '--new',
         action='store_true',
         help="push file to discourse, creating a new topic in the process",
-        dest="discpushnew"
+        dest="new"
+    )
+    ppg_gr3.add_argument(
+        "-b",
+        "--bulk",
+        action='store_true',
+        help="topic flag to confirm bulk push",
+        dest="bulk"
     )
     parser_push_discourse.add_argument(
         '-T',
         '--title',
         nargs=1,
         help="title for new document",
-        dest="discpushnewtitle"
+        dest="title"
     )
     parser_push_discourse.add_argument(
         '-k',
@@ -87,14 +101,14 @@ def setmenu():
         nargs=1,
         type=int,
         help="category for new document",
-        dest="discpushnewcategory"
+        dest="cat"
     )
     parser_push_discourse.add_argument(
         '-c',
         '--cfg',
         nargs=1,
         help="alternate config file with discourse URL & auth params",
-        dest="discpushconfig"
+        dest="config"
     )
     parser_push_discourse.add_argument(
         '-m',
@@ -112,7 +126,7 @@ def setmenu():
         help="github corresponding to current local clone directory"
     )
     ppg_grp = parser_pull_github.add_mutually_exclusive_group(required=True)
-    ppg_grp.add_argument('-f','--file',nargs=1,help="filename to pull from github",dest="gitfile")
+    ppg_grp.add_argument('-f','--file',nargs=1,help="file to pull from github",dest="file")
     ppg_grp.add_argument('-a','--all', action='store_true',help="pull all files from github",dest="gitall")
     parser_pull_discourse = pull_sub.add_parser(
         'discourse',
@@ -123,15 +137,15 @@ def setmenu():
         '-f',
         '--file',
         nargs=1,
-        help="filename to pull from discourse",
-        dest="discpullfile"
+        help="file to pull from discourse",
+        dest="file"
     )
     ppg_grp2.add_argument(
         '-r',
         '--range',
         nargs=2,
         help="-r <start> <end>: pull topics from start to end",
-        dest="discpullrange",
+        dest="range",
         type=int
     )
     ppg_grp3 = parser_pull_discourse.add_mutually_exclusive_group(required=True)
@@ -140,7 +154,7 @@ def setmenu():
         '--tnum',
         nargs=1,
         help="topic number from which to pull the file",
-        dest="discpulltopic",
+        dest="topic",
         type=int
     )
     ppg_grp3.add_argument(
@@ -148,14 +162,14 @@ def setmenu():
         '--bulk',
         action='store_true',
         help='confirms bulk pull indicated with "-a"',
-        dest="discpullbulk"
+        dest="bulk"
     )
     parser_pull_discourse.add_argument(
         '-k',
         '--cat',
         nargs=1,
         help="restrict discourse category to CAT",
-        dest="discpullcat",
+        dest="cat",
         type=int
     )
     parser_pull_discourse.add_argument(
@@ -163,28 +177,28 @@ def setmenu():
         '--live',
         action='store_true',
         help="do not pull deleted articles",
-        dest="discnodeleted"
+        dest="nodeleted"
     )
     parser_pull_discourse.add_argument(
         '-c',
         '--cfg',
         nargs=1,
         help="alternate config file with discourse URL & auth params",
-        dest="discpullconfigfile"
+        dest="config"
     )
     parser_pull_discourse.add_argument(
         '-j',
         '--json',
         action='store_true',
         help='store topic JSON in "topic.json" (useless with -a)',
-        dest="disctopicjson"
+        dest="topicjson"
     )
     parser_pull_discourse.add_argument(
         '-J',
         '--JSON',
         action='store_true',
         help='store post JSON in "post.json" (useless with -a)',
-        dest="discpostjson"
+        dest="postjson"
     )
 
     return parser
