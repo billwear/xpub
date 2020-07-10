@@ -115,7 +115,6 @@ def push_discourse():
                fl2 = flist[-1].split('.')
                if(fl2[0].isnumeric()):
                    topic = int(fl2[0])
-                   print ("just set topic to " + str(topic))
                else:
                    continue
             else:
