@@ -423,7 +423,7 @@ def pull_discourse():
             category_id = topic_json['category_id']
             if(args.cat):
                 if((category_id is None)
-                   or (int(arg.discpullcat) != int(category_id))):
+                   or (int(args.cat[0]) != int(category_id))):
                     continue
             autoname = topic_json['post_stream']['posts'][0]['topic_slug'] + \
                 '-' + str(tn) + '.md'
@@ -453,7 +453,7 @@ def pull_discourse():
             
             # convert the returned post to json
             post_json = json.loads(output2)
-            
+
             # extract the article markdown from the json output
             raw = post_json['raw']
             
