@@ -11,4 +11,4 @@
 1. Install it in your path.
 2. Type 'xpub' at the command line, and follow the help prompts to see how it works.
 
-xpub uses whole words, and automatically provides help for a garbled or inomplete command sequence.
+xpub uses whole words, and automatically provides help for a garbled or incomplete command sequence.
