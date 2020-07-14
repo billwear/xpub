@@ -1,44 +1,30 @@
 #!/usr/bin/python3
-#
-# dpub, a publishing assistant which can push and pull from various sources
-# currently, those source include github and discourse, where the github is
-# defined by the current working directory, and the discourse instance is
-# defined by a configuration file; this program tries to use natural language
-# as much as possible, for example:
-#
-# dpub push file discstats.md to discourse topic 1515
-# dpub pull all files from github
-# dpub pull all files from dicourse matching category 5
-# dpub push file foo.c to github
-#
-# dpub push
-#      pull
 
 import argparse
 
-
+# entry point for importing code
 def setmenu():
-    main_parser = argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(
         "dpub",
         "doc publishing program",
-        '"dpub command -h" for details'
+        'Enter "dpub command -h" for details'
     )
-    pos1parser = main_parser.add_subparsers(
-        dest="pos1"
+    subparserL1 = parser.add_subparsers(
+        dest="l1"
     )
-    parser_push = pos1parser.add_parser(
+    parser_push = subparserL1.add_parser(
         'push',
-        help="push a file(s) to a destination"
+        help="push a file to a destination"
     )
-    parser_pull = pos1parser.add_parser(
+    parser_pull = subparserL1.add_parser(
         'pull',
-        help="pull a file(s) from a source"
+        help="pull a file from a source"
     )
-    parser_convert = pos1parser.add_parser(
+    parser_convert = subparserL1.add_parser(
         'convert',
         help="convert a file locally"
     )
-    parser_split = pos1parser.add_parser(
+    parser_split = subparserL1.add_parser(
         'split',
         help="split a document into versions, based on tags"
     )
@@ -215,4 +201,4 @@ def setmenu():
         dest="postjson"
     )
 
-    return main_parser
+    return parser

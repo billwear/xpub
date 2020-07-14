@@ -593,12 +593,12 @@ def pull_github():
 parser = setmenu()
 args = parser.parse_args()
 
-if(args.pos1parser == "push"):
+if(args.l1 == "push"):
     if(args.push_l2 == "discourse"):
         push_discourse()
     elif(args.push_l2 == "github"):
         push_github()
-elif(args.pos1parser == "pull"):
+elif(args.l1 == "pull"):
     if(args.pull_l2 == "discourse"):
         pull_discourse()
     elif(args.pull_l2 == "github"):
