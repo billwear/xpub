@@ -326,49 +326,6 @@ except ImportError:
 #         # remove the temporary json file
 #         os.remove("foo.json")
 
-# def push_github():
-#     if(args.gitpushall == True):
-#         response = subprocess.check_output([
-#             'git',
-#             'add',
-#             '.']
-#         )
-#         try:
-#             response = subprocess.check_output([
-#                 'git',
-#                 'commit',
-#                 '-m',
-#                 'bot-push']
-#             )
-#         except:
-#             print("up to date")
-#             sys.exit()
-#         response = subprocess.check_output([
-#             'git',
-#             'push']
-#         )            
-#     else:
-#         file = str(args.file[0])
-#         response = subprocess.check_output([
-#             'git',
-#             'add',
-#             file]
-#         )
-#         try:
-#             response = subprocess.check_output([
-#                 'git',
-#                 'commit',
-#                 '-m',
-#                 'bot-push']
-#             )
-#         except:
-#             print("up to date")
-#             sys.exit()
-
-#         response = subprocess.check_output([
-#             'git',
-#             'push']
-#         )
 
 # def pull_discourse():
 #     if(args.range != None):
@@ -635,11 +592,52 @@ def push_discourse_new():
         print('xpub push discourse new "<title>" "<filename>"')
 
 def push_github_all():
-    print("xpub push github all")
+        response = subprocess.check_output([
+            'git',
+            'add',
+            '.']
+        )
+        try:
+            response = subprocess.check_output([
+                'git',
+                'commit',
+                '-m',
+                'bot-push']
+            )
+        except:
+            print("up to date")
+            sys.exit()
+        response = subprocess.check_output([
+            'git',
+            'push']
+        )            
+
 
 def push_github_file():
     if(len(sys.argv) < 5):
         print('xpub push github file "<filename>"')
+    else:
+        filename = str(sys.argv[4])
+        response = subprocess.check_output([
+            'git',
+            'add',
+            filename]
+        )
+        try:
+            response = subprocess.check_output([
+                'git',
+                'commit',
+                '-m',
+                'bot-push']
+            )
+        except:
+            print("up to date")
+            sys.exit()
+
+        response = subprocess.check_output([
+            'git',
+            'push']
+        )
 
 def pull_discourse_all():
     print("xpub pull discourse all")
