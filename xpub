@@ -1,12 +1,88 @@
 #!/usr/bin/python3
 
-import argparse
-import sys, subprocess, json, os, time
+import sys, subprocess, json, os, time, re, markdown, jinja2
 from yaml import load, dump      
 try:                             
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     from yaml import Loader, Dumper
+
+TEMPLATE = """<!DOCTYPE html>
+<html>
+<body>
+<div class="container">
+{{content}}
+</div>
+</body>
+</html>
+"""
+
+def convert():
+    print("xpub convert (markdown | discourse)")
+
+def convert_discourse():
+    print("xpub convert discourse (html | bulk)")
+    
+def convert_markdown():
+    print("xpub convert markdown (html)")
+
+def convert_discourse_bulk():
+    if(len(sys.argv) < 5):
+        print('xpub convert discourse bulk (html)')
+    elif(sys.argv[4] == "html"):
+        for mdfilename in os.listdir("."):
+            if(mdfilename.endswith(".md")):
+                basename = str(os.path.splitext(mdfilename)[0])
+                html_filename = basename + ".html"
+                mdf = open(mdfilename, "r")
+                md = mdf.read()
+
+                # correct majority of the links
+                cmd2 = re.sub(r"https://discourse.maas.io", "", md)
+                cmd1 = re.sub(r"/t/([a-z0-9-]*)/([0-9]*)#", r"\1-\2.html#", cmd2)
+                cmd = re.sub(r"/t/([a-z0-9-]*)/([0-9]*)", r"\1-\2.html", cmd1)
+        
+                # convert the corrected markdown to html
+                extensions = {'extra','smarty'}
+                html = markdown.markdown(cmd, extensions=extensions,
+                                         output_format='html5')
+                htmlf = open(html_filename, "w")
+                doc = jinja2.Template(TEMPLATE).render(content=html)
+                htmlf.write(doc)        
+                
+def convert_discourse_html():
+    if(len(sys.argv) < 5):
+        print('xpub convert discourse html "<basefilename>"')
+    else:
+        # read the markdown
+        md_filename = str(sys.argv[4]) + ".md"
+        html_filename = str(sys.argv[4]) + ".html"
+        mdf = open(md_filename, "r")
+        md = mdf.read()
+
+        # correct majority of the links
+        cmd = re.sub(r"/t/([a-z-]*)/([0-9]*)#", r"\1-\2.html#", md)
+        
+        # convert the corrected markdown to html
+        extensions = {'extra','smarty'}
+        html = markdown.markdown(cmd, extensions=extensions, output_format='html5')
+        htmlf = open(html_filename, "w")
+        doc = jinja2.Template(TEMPLATE).render(content=html)
+        htmlf.write(doc)        
+        
+def convert_markdown_html():
+    if(len(sys.argv) < 5):
+        print('xpub convert markdown html "<basefilename>"')
+    else:
+        md_filename = str(sys.argv[4]) + ".md"
+        html_filename = str(sys.argv[4]) + ".html"
+        mdf = open(md_filename, "r")
+        md = mdf.read()
+        extensions = {'extra','smarty'}
+        html = markdown.markdown(md, extensions=extensions, output_format='html5')
+        htmlf = open(html_filename, "w")
+        doc = jinja2.Template(TEMPLATE).render(content=html)
+        htmlf.write(doc)
 
 def push():
     print("xpub push (discourse | github)")
@@ -27,7 +103,7 @@ def pull_github():
     print("xpub pull github (all | file)")
 
 def xpub():
-    print("xpub (pull | push)")
+    print("xpub (pull | push | convert)")
 
 def push_discourse_tagged():
     if(len(sys.argv) < 8):
@@ -927,7 +1003,14 @@ fdict = {'help': helps,
          'pull discourse range': pull_discourse_range,
          'pull github': pull_github,
          'pull github all': pull_github_all,
-         'pull github file': pull_github_file}
+         'pull github file': pull_github_file,
+         'convert': convert,
+         'convert markdown': convert_markdown,
+         'convert markdown html': convert_markdown_html,
+         'convert discourse': convert_discourse,
+         'convert discourse html': convert_discourse_html,
+         'convert discourse bulk': convert_discourse_bulk
+}
 
 keystring = ""
 
