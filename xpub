@@ -7,16 +7,6 @@ try:
 except ImportError:
     from yaml import Loader, Dumper
 
-TEMPLATE = """<!DOCTYPE html>
-<html>
-<body>
-<div class="container">
-{{content}}
-</div>
-</body>
-</html>
-"""
-
 def convert():
     print("xpub convert (markdown | discourse)")
 
@@ -33,12 +23,17 @@ def convert_discourse_bulk():
         for mdfilename in os.listdir("."):
             if(mdfilename.endswith(".md")):
                 basename = str(os.path.splitext(mdfilename)[0])
+                tmp1 = basename.replace("maas","MAAS")
+                tmp2 = tmp1.rstrip("-0123456789")
+                tmp3 = tmp2.replace("-"," ")
+                tmp4 = tmp3[0].upper() + tmp3[1:]
+                page_title = tmp4
                 html_filename = basename + ".html"
                 mdf = open(mdfilename, "r")
                 md = mdf.read()
 
                 # correct majority of the links
-                cmd2 = re.sub(r"https://discourse.maas.io", "", md)
+                cmd2 = re.sub(r"https://discourse.maas.io/t", "/t", md)
                 cmd1 = re.sub(r"/t/([a-z0-9-]*)/([0-9]*)#", r"\1-\2.html#", cmd2)
                 cmd = re.sub(r"/t/([a-z0-9-]*)/([0-9]*)", r"\1-\2.html", cmd1)
         
@@ -46,7 +41,22 @@ def convert_discourse_bulk():
                 extensions = {'extra','smarty'}
                 html = markdown.markdown(cmd, extensions=extensions,
                                          output_format='html5')
+                html = "<h1>" + page_title + "</h1>" + html
                 htmlf = open(html_filename, "w")
+                try:
+                    template_file = open("template.html", "r")
+                    TEMPLATE = template_file.read()
+                except:
+                    TEMPLATE = """<!DOCTYPE html>
+                    <html>
+                    <body>
+                    <div class="container">
+                    {{content}}
+                    </div>
+                    </body>
+                    </html>
+                    """
+
                 doc = jinja2.Template(TEMPLATE).render(content=html)
                 htmlf.write(doc)        
                 
@@ -61,7 +71,9 @@ def convert_discourse_html():
         md = mdf.read()
 
         # correct majority of the links
-        cmd = re.sub(r"/t/([a-z-]*)/([0-9]*)#", r"\1-\2.html#", md)
+        cmd2 = re.sub(r"https://discourse.maas.io/t", "/t", md)
+        cmd1 = re.sub(r"/t/([a-z0-9-]*)/([0-9]*)#", r"\1-\2.html#", cmd2)
+        cmd = re.sub(r"/t/([a-z0-9-]*)/([0-9]*)", r"\1-\2.html", cmd1)
         
         # convert the corrected markdown to html
         extensions = {'extra','smarty'}
