@@ -23,11 +23,20 @@ def convert_discourse_bulk():
         for mdfilename in os.listdir("."):
             if(mdfilename.endswith(".md")):
                 basename = str(os.path.splitext(mdfilename)[0])
-                tmp1 = basename.replace("maas","MAAS")
-                tmp2 = tmp1.rstrip("-0123456789")
-                tmp3 = tmp2.replace("-"," ")
-                tmp4 = tmp3[0].upper() + tmp3[1:]
-                page_title = tmp4
+                page_title = basename
+                page_title = page_title.replace("maas","MAAS")
+                page_title = page_title.replace("api","API")
+                page_title = page_title.replace("dhcp","DHCP")
+                page_title = page_title.replace("stp","STP")
+                page_title = page_title.replace("ntp","NTP")
+                page_title = page_title.replace("cli","CLI")
+                page_title = page_title.replace("vmfs","VMFS")
+                page_title = page_title.replace("vm","VM")
+                page_title = page_title.replace("CLIent","client")
+                page_title = page_title.replace("tls","TLS")
+                page_title = page_title.rstrip("-0123456789")
+                page_title = page_title.replace("-"," ")
+                page_title = page_title[0].upper() + page_title[1:]
                 html_filename = basename + ".html"
                 mdf = open(mdfilename, "r")
                 md = mdf.read()
@@ -166,7 +175,7 @@ def push_discourse_tagged():
         post_id = topic_json['post_stream']['posts'][0]['id']
         category_id = topic_json['category_id']
         deleted_at = topic_json['deleted_at']
-        if(deleted_at and args.nodeleted):
+        if(deleted_at):
             print("post deleted: not pushed from discourse")
             sys.exit()
 
@@ -280,7 +289,7 @@ def push_discourse_topic():
         post_id = topic_json['post_stream']['posts'][0]['id']
         category_id = topic_json['category_id']
         deleted_at = topic_json['deleted_at']
-        if(deleted_at and args.nodeleted):
+        if(deleted_at):
             print("post deleted: not pushed from discourse")
             sys.exit()
 
@@ -474,7 +483,7 @@ def pull_discourse_range():
             autoname = topic_json['post_stream']['posts'][0]['topic_slug'] + \
                 '-' + str(tn) + '.md'
             deleted_at = topic_json['deleted_at']
-            if(deleted_at and args.nodeleted):
+            if(deleted_at):
                 print("post deleted: not pulled from discourse")
                 continue
                 
@@ -595,7 +604,7 @@ def pull_discourse_category():
             autoname = topic_json['post_stream']['posts'][0]['topic_slug'] + \
                 '-' + str(tn) + '.md'
             deleted_at = topic_json['deleted_at']
-            if(deleted_at and args.nodeleted):
+            if(deleted_at):
                 print("post deleted: not pulled from discourse")
                 continue
                 
@@ -678,7 +687,7 @@ def pull_discourse_topic():
         post_id = topic_json['post_stream']['posts'][0]['id']
         category_id = topic_json['category_id']
         deleted_at = topic_json['deleted_at']
-        if(deleted_at and args.nodeleted):
+        if(deleted_at):
             print("post deleted: not pulled from discourse")
             sys.exit()
             
@@ -810,7 +819,7 @@ def push_discourse_all():
         post_id = topic_json['post_stream']['posts'][0]['id']
         category_id = topic_json['category_id']
         deleted_at = topic_json['deleted_at']
-        if(deleted_at and args.nodeleted):
+        if(deleted_at):
             print("post deleted: not pushed from discourse")
             sys.exit()
 
@@ -942,7 +951,7 @@ def push_discourse_bulktag():
         post_id = topic_json['post_stream']['posts'][0]['id']
         category_id = topic_json['category_id']
         deleted_at = topic_json['deleted_at']
-        if(deleted_at and args.nodeleted):
+        if(deleted_at):
             print("post deleted: not pushed from discourse")
             sys.exit()
 
