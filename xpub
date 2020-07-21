@@ -13,12 +13,24 @@ def convert():
 def convert_discourse():
     print("xpub convert discourse (html | bulk)")
     
+def convert_discourse_help():
+    print("xpub convert discourse (html | bulk)")
+    print(" - converts discourse markdown to another format")
+    
 def convert_markdown():
     print("xpub convert markdown (html)")
+
+def convert_markdown_help():
+    print("xpub convert markdown (html)")
+    print(" - converts daring fireball markdown to another format")
 
 def convert_discourse_bulk():
     if(len(sys.argv) < 5):
         print('xpub convert discourse bulk (html)')
+    elif(sys.argv[4] == "help"):
+        print('xpub convert discourse bulk (html)')
+        print(" - converts all .md files in cwd to .<fmt> using same filename")
+        print(" - e.g., my-file-item-705.md >> my-file-item-705.html")
     elif(sys.argv[4] == "html"):
         for mdfilename in os.listdir("."):
             if(mdfilename.endswith(".md")):
@@ -68,10 +80,16 @@ def convert_discourse_bulk():
 
                 doc = jinja2.Template(TEMPLATE).render(content=html)
                 htmlf.write(doc)        
-                
+
 def convert_discourse_html():
     if(len(sys.argv) < 5):
         print('xpub convert discourse html "<basefilename>"')
+    elif(sys.argv[4] == "help"):
+        print('xpub convert discourse html "<basefilename>"')
+        print(" - converts discourse markdown to html")
+        print(" - corrects discourse links to html hrefs")
+        print(" - enter the base markdown filename (w/o extension)")
+        print("   (xpub assumes .md extension on the markdown)")
     else:
         # read the markdown
         md_filename = str(sys.argv[4]) + ".md"
@@ -94,6 +112,11 @@ def convert_discourse_html():
 def convert_markdown_html():
     if(len(sys.argv) < 5):
         print('xpub convert markdown html "<basefilename>"')
+    elif(sys.argv[4] == "help"):
+        print('xpub convert markdown html "<basefilename>"')
+        print(" - converts daring fireball markdown to html")
+        print(" - enter the base markdown filename (w/o extension)")
+        print("   (xpub assumes .md extension on the markdown)")
     else:
         md_filename = str(sys.argv[4]) + ".md"
         html_filename = str(sys.argv[4]) + ".html"
@@ -108,17 +131,47 @@ def convert_markdown_html():
 def push():
     print("xpub push (discourse | github)")
 
+def push_help():
+    print("xpub push (discourse | github)")
+    print(" - pushes files to destination")
+
 def push_discourse():
     print("xpub push discourse (topic | new | tagged | all | bulktag)")
 
+def push_discourse_help():
+    print("xpub push disxcourse (topic | new | tagged | all | bulktag)")
+    print(" - pushes discourse markdown via discourse API")
+    print(" - API parameters specified in dc.yaml file (see xpub github)")
+    print(' - "topic" pushes a specific topic number')
+    print(' - "new" creates a new topic')
+    print(' - "tagged" selectively pushes to a topic number based on tags')
+    print(' - "all" pushes all files, using filename to get topic number')
+    print('    **NOTE** this option is immediate and expects filenames')
+    print('    in the format <title-slug>-topicnumber.md')
+    print(' - "bulktag" is like "tagged," but pushes multiple files')
+    print('    (also expects filenames like <title-slug>-topicnumber.md')
+
 def push_github():
     print("xpub push github (all | file)")
+    print(' - pushes entire github repo ("all") or specific file ("file")')
+    print(" - must operate in remote .git repo on local disk")
 
 def pull():
     print("xpub pull (discourse | github)")
 
+def pull_help():
+    print("xpub pull (discourse | github)")
+    print(" - pulls files from source")
+
 def pull_discourse():
     print("xpub pull discourse (topic | range | category)")
+
+def pull_discourse_help():
+    print("xpub pull discourse (topic | range | category)")
+    print(" - pulls files from discourse")
+    print(' - "topic" pulls a specific topic number')
+    print(' - "range" pulls a range of topics between two numbers')
+    print(' - "category" pulls a range of topics from a specific category')
 
 def pull_github():
     print("xpub pull github (all | file)")
@@ -340,7 +393,14 @@ def push_discourse_topic():
         os.remove("foo.json")
 
 def push_discourse_new():
-    if(len(sys.argv) < 8):
+    if(len(sys.argv) < 5):
+        print('xpub push discourse new category <number> "<title>" "<filename>"')
+    elif(sys.argv[4] == "help"):
+        print('xpub push discourse new category <number> "<title>" "<filename>"')
+        print(' - new discourse posts must have a category number and title')
+        print(" - enter title in parentheses")
+        print(" - filename can be anything, but file must be discourse markdown format")
+    elif(len(sys.argv) < 8):
         print('xpub push discourse new category <number> "<title>" "<filename>"')
     else:
 
@@ -408,25 +468,40 @@ def push_discourse_new():
         os.remove("foo.json")
 
 def push_github_all():
-        response = subprocess.check_output([
-            'git',
-            'add',
-            '.']
-        )
-        try:
-            response = subprocess.check_output([
-                'git',
-                'commit',
-                '-m',
-                'bot-push']
-            )
-        except:
-            print("up to date")
+    if(len(sys.argv) > 4):
+        if(sys.argv[4] == "help"):
+            print('push github all')
+            print(' - immediately pushes all files to github repo')
+            print(' - must be in local github repo to work')
             sys.exit()
+        else:
+            print('"push github all" takes no options: try again')
+            sys.exit()
+            
+    print("this will immediately push the entire repo to github")
+    value = input("is this what you intended? (y/n) ")
+    if(value != "y"):
+        sys.exit()
+
+    response = subprocess.check_output([
+        'git',
+        'add',
+        '.']
+    )
+    try:
         response = subprocess.check_output([
             'git',
-            'push']
-        )            
+            'commit',
+            '-m',
+            'bot-push']
+        )
+    except:
+        print("up to date")
+        sys.exit()
+    response = subprocess.check_output([
+        'git',
+        'push']
+    )            
 
 def pull_discourse_range():
     if(len(sys.argv) < 6):
@@ -548,6 +623,13 @@ def push_github_file():
 def pull_discourse_category():
     if(len(sys.argv) < 5):
         print("xpub pull discourse category <number> range <low> <high>")
+    elif(sys.argv[4] == "help"):
+        print("xpub pull discourse category <number> range <low> <high>")
+        print(' - category number = discourse "category_id" json element')
+        print(' - range takes two topic numbers (low to high)')
+        print(' - this call pulls consecutive topics matching the category')
+    elif(len(sys.argv) < 8):
+        print("xpub pull discourse category <number> range <low> <high>")
     else:
         start = int(sys.argv[6])
         end = int(sys.argv[7])
@@ -641,8 +723,13 @@ def pull_discourse_category():
         sys.exit(0)
 
 def pull_discourse_topic():
-    if(len(sys.argv) < 6):
+    if(len(sys.argv) < 5):
         print('xpub pull discourse topic <number> "<filename>"')
+    elif(sys.argv[4] == "help"):
+        print('xpub pull discourse topic <number> "<filename>"')
+        print(' - "<filename>" can be named whatever you want')
+    elif(len(sys.argv) < 6):
+        print('xpub pull discourse topic <number> "<filename>"')        
     else:
         filename = str(sys.argv[5])
         topic = int(sys.argv[4])
@@ -731,21 +818,35 @@ def pull_discourse_topic():
         f.close()
 
 def pull_github_all():
-        response = subprocess.check_output([
-            'git',
-            'fetch']
-        )
-        response = subprocess.check_output([
-            'git',
-            'checkout',
-            'origin/master',
-            '--',
-            '.']
-        )
+    if(len(sys.argv) == 4):
+        print("this will immediately pull the entire repo")
+        value = input("is this what you intended? (y/n) ")
+        if(value == "y"):
+            response = subprocess.check_output([
+                'git',
+                'fetch']
+            )
+            response = subprocess.check_output([
+                'git',
+                'checkout',
+                'origin/master',
+                '--',
+                '.']
+            )
+    elif(len(sys.argv > 4)):
+        if(sys.argv[4] == "help"):
+            print("xpub pull github all")
+            print(" - this command has immediate effect")
+            print(" - must be executed in local git repo directory")
+        else:
+            print('too many paramaeters: enter "xpub pull github all help" for hints')
 
 def pull_github_file():
     if(len(sys.argv) < 5):
         print('xpub pull github file "<filename"')
+    elif(sys.argv[4] == "help"):
+        print('xpub pull github file "<filename"')
+        print(' - does a git "fetch" and "checkout" on "<filename>"')
     else:
         filename = str(sys.argv[4])
         response = subprocess.check_output([
@@ -761,6 +862,10 @@ def pull_github_file():
         )
 
 def push_discourse_all():
+    print("this will immediately push the entire directory to discourse")
+    value = input("is this what you intended? (y/n) ")
+    if(value != "y"):
+        sys.exit()
 
     directory = "."
     topic = 0
@@ -872,6 +977,16 @@ def push_discourse_all():
 def push_discourse_bulktag():
     if( len(sys.argv) < 5):
         print("xpub push discourse bulktag <tag> <tag> <tag>...")
+        sys.exit()
+    elif(sys.argv[4] == "help"):
+        print("xpub push discourse bulktag <tag> <tag> <tag>...")
+        print(" - pushes all markdown files in cwd to discourse")
+        print(' - filenames must be like "<topic-slug>-topicnum.md"')
+        print('   where "<topic-slug>" is the slugged title, and')
+        print('   "topicnum" is the intended topic number')
+        print(' - all untagged paragraphs are pushed')
+        print(' - any paragraphs tagged with <tag>s are also pushed')
+        print(' - paragraphs with non-matching tags are not pushed')
         sys.exit()
 
     directory = "."
@@ -1004,7 +1119,7 @@ def push_discourse_bulktag():
         os.remove("foo.json")
     
 def helps():
-    print("this is where help goes")
+    print('invalid option: just type "xpub" for hints')
 
 fdict = {'help': helps,
          'push': push,
@@ -1030,7 +1145,13 @@ fdict = {'help': helps,
          'convert markdown html': convert_markdown_html,
          'convert discourse': convert_discourse,
          'convert discourse html': convert_discourse_html,
-         'convert discourse bulk': convert_discourse_bulk
+         'convert discourse bulk': convert_discourse_bulk,
+         'convert discourse help': convert_discourse_help,
+         'convert markdown help': convert_markdown_help,
+         'push help': push_help,
+         'pull help': pull_help,
+         'pull discourse help': pull_discourse_help,
+         'push discourse help': push_discourse_help
 }
 
 keystring = ""
