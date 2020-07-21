@@ -9,4 +9,18 @@
 
 At any point, you can add a "-h" to get detailed help for that command sequence.
 
-Enjoy.
+-----
+
+**xpub** needs the following libraries:
+
+ - sys
+ - subprocess
+ - json
+ - os
+ - time
+ - re
+ - markdown
+ - jinja2
+ - yaml
+
+Most of these are standard, except maybe `markdown` and `jinja2`, but I always list all the dependencies just in case.
