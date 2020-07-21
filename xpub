@@ -504,8 +504,14 @@ def push_github_all():
     )            
 
 def pull_discourse_range():
-    if(len(sys.argv) < 6):
+    if(len(sys.argv) < 5):
         print("xpub pull discourse range <low> <high>")
+    elif(sys.argv[4] == "help"):
+        print("xpub pull discourse range <low> <high>")
+        print(" - pulls a consecutive range of topics")
+        print(' - output file names like "<topic-slug>-topicnum.md"')
+    elif(len(sys.argv) < 6):
+        print("xpub pull discourse range <low> <high>")        
     else:
         start = int(sys.argv[4])
         end = int(sys.argv[5])
@@ -597,6 +603,10 @@ def pull_discourse_range():
 def push_github_file():
     if(len(sys.argv) < 5):
         print('xpub push github file "<filename>"')
+    elif(sys.argv[4] == "help"):
+        print('xpub push github file "<filename>"')
+        print(' - push single file to github repo')
+        print(' - must be in local github repo to work')
     else:
         filename = str(sys.argv[4])
         response = subprocess.check_output([
@@ -1119,7 +1129,8 @@ def push_discourse_bulktag():
         os.remove("foo.json")
     
 def helps():
-    print('invalid option: just type "xpub" for hints')
+    print('type a partial command sequence, followed by "help" for detailed help')
+    print('type a partial command sequence by itself for hints')
 
 fdict = {'help': helps,
          'push': push,
