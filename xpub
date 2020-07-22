@@ -106,6 +106,19 @@ def convert_discourse_html():
         extensions = {'extra','smarty'}
         html = markdown.markdown(cmd, extensions=extensions, output_format='html5')
         htmlf = open(html_filename, "w")
+        try:
+            template_file = open("template.html", "r")
+            TEMPLATE = template_file.read()
+        except:
+            TEMPLATE = """<!DOCTYPE html>
+            <html>
+            <body>
+            <div class="container">
+            {{content}}
+            </div>
+            </body>
+            </html>
+            """
         doc = jinja2.Template(TEMPLATE).render(content=html)
         htmlf.write(doc)        
         
@@ -398,7 +411,7 @@ def push_discourse_new():
     elif(sys.argv[4] == "help"):
         print('xpub push discourse new category <number> "<title>" "<filename>"')
         print(' - new discourse posts must have a category number and title')
-        print(" - enter title in parentheses")
+        print(" - enter title in quotes")
         print(" - filename can be anything, but file must be discourse markdown format")
     elif(len(sys.argv) < 8):
         print('xpub push discourse new category <number> "<title>" "<filename>"')
@@ -638,6 +651,8 @@ def pull_discourse_category():
         print(' - category number = discourse "category_id" json element')
         print(' - range takes two topic numbers (low to high)')
         print(' - this call pulls consecutive topics matching the category')
+        print(' - places topics in files named like "<topic-slug>-topicnum.md"')
+        print(' - API parameters are specified in "/etc/dc.yaml"')
     elif(len(sys.argv) < 8):
         print("xpub pull discourse category <number> range <low> <high>")
     else:
