@@ -722,7 +722,7 @@ def push_discourse_new():
         os.remove("foo.json")
 
 def push_discourse_tagged():
-    if(len(sys.argv) < 8):
+    if(len(sys.argv) < 5):
         print('usage: xpub push discourse tagged topic <number> <filename> <tag> <tag> <tag>...\n')
     elif(len(sys.argv) == 5 and sys.argv[4] == "help"):
         print("\nDescription:")
@@ -741,8 +741,8 @@ def push_discourse_tagged():
         print('  Tagged paragraphs which match a mentioned tag are pushed.')
         print('  Tagged paragraphs which do not match any mentioned tags are not pushed.')
         print('  Tags are HTML comments with the <tag> keyword (by itself) on the comment line;')
-        print('    for example, "<!-- ui" \n <paragraph content> \n "ui -->"')
-    elif(len(sys.argv) > 7):
+        print('    for example: \n\t\t"<!-- ui" \n\t\t <paragraph content> \n\t\t "ui -->"\n')
+    elif(len(sys.argv) < 8):
         print('usage: xpub push discourse tagged topic <number> <filename> <tag> <tag> <tag>...\n')
     else:    
         topic = sys.argv[5]
@@ -1007,7 +1007,7 @@ def push_discourse_bulktag():
         print('  Tagged paragraphs which match a mentioned tag are pushed.')
         print('  Tagged paragraphs which do not match any mentioned tags are not pushed.')
         print('  Tags are HTML comments with the <tag> keyword (by itself) on the comment line;')
-        print('    for example, "<!-- ui" \n <paragraph content> \n "ui -->"')
+        print('    for example, \n\t\t"<!-- ui" \n\t\t <paragraph content> \n\t\t "ui -->"\n')
         sys.exit()
     elif(len(sys.argv) > 5):
         print("usage: xpub push discourse bulktag <tag> <tag> <tag>...")
@@ -1186,19 +1186,17 @@ def convert_markdown_single():
         print('  xpub convert markdown single html <filename>')
         print('\nNotes:')
         print('  xpub converts "<filename.ext" to "filename.html"')
-    elif(len(sys.argv) == 6 and sys.arg[4] == "html"):
+    elif(len(sys.argv) == 6 and sys.argv[4] == "html"):
         # read the markdown
-        md_filename = str(sys.argv[4])
+        md_filename = str(sys.argv[5])
         basename = os.path.splitext(md_filename)[0]
         html_filename = basename + ".html"
-        print(html_filename)
-        sys.exit()
         mdf = open(md_filename, "r")
         md = mdf.read()
 
         # convert the corrected markdown to html
         extensions = {'extra','smarty'}
-        html = markdown.markdown(cmd, extensions=extensions, output_format='html5')
+        html = markdown.markdown(md, extensions=extensions, output_format='html5')
         htmlf = open(html_filename, "w")
         try:
             template_file = open("template.html", "r")
@@ -1286,13 +1284,11 @@ def convert_discourse_single():
         print('    and corrects the title to sentence case, while also')
         print('    capitalizing any acronyms it knows about.  For example,')
         print('    "select-os-image" becomes "Select OS image"\n')
-    elif(len(sys.argv) == 6 and sys.arg[4] == "html"):
+    elif(len(sys.argv) == 6 and sys.argv[4] == "html"):
         # read the markdown
-        md_filename = str(sys.argv[4])
+        md_filename = str(sys.argv[5])
         basename = os.path.splitext(md_filename)[0]
         html_filename = basename + ".html"
-        print(html_filename)
-        sys.exit()
         mdf = open(md_filename, "r")
         md = mdf.read()
 
