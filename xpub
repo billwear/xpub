@@ -880,6 +880,7 @@ def push_discourse_all():
         print('    the <topic> in the filename to decide where to land the markdown.\n')
         print('  Discourse API access is configured in /etc/yaml.  See the github for an example file.\n')
         sys.exit()
+        
     elif(len(sys.argv) != 4):
         print('xpub push dicourse  all (takes no options)')
         sys.exit()
