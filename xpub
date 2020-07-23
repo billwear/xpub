@@ -113,7 +113,9 @@ def pull_discourse_topic():
         print('  xpub pull discourse topic <number> <filename>')
         print('\nOptions')
         print('  number     the discourse topic number to pull')
-        print('  filename   the filename in which the discourse markdown should land\n')
+        print('  filename   the filename in which the discourse markdown should land')
+        print('\nNotes')
+        print('  Discourse API access is configured in /etc/yaml.  See the github for an example file.\n')
     elif(len(sys.argv) != 6):
         print('usage: xpub pull discourse topic (<number> <filename> | help)\n')
     else:
@@ -218,6 +220,7 @@ def pull_discourse_range():
         print('  Topics are placed in filenames of the form "<slug>-<topicno>.md";')
         print('  for example, if topic 1811 is "How to cook bacon" the output file')
         print('  for that topic would be "how-to-cook-bacon-1811.md"\n')
+        print('  Discourse API access is configured in /etc/yaml.  See the github for an example file.\n')
     elif(len(sys.argv) != 6):
         print("usage: xpub pull discourse range (<low> <high> | help)\n")
     else:
@@ -324,6 +327,7 @@ def pull_discourse_category():
         print('  Topics are placed in filenames of the form "<slug>-<topicno>.md";')
         print('  for example, if topic 1811 is "How to cook bacon" the output file')
         print('  for that topic would be "how-to-cook-bacon-1811.md"\n')
+        print('  Discourse API access is configured in /etc/yaml.  See the github for an example file.\n')
     elif(len(sys.argv) != 8):
         print("usage: xpub pull discourse category (<number> range <low> <high> | help)\n")
     else:
@@ -546,7 +550,9 @@ def push_discourse_topic():
         print('  xpub push discourse topic <number> <filename>')
         print('\nOptions')
         print('  number     the discourse topic number where the markdown should land')
-        print('  filename   the filename from which to read the discourse markdown\n')
+        print('  filename   the filename from which to read the discourse markdown')
+        print('\nNotes')
+        print('  Discourse API access is configured in /etc/yaml.  See the github for an example file.\n')
     elif(len(sys.argv) != 6):
         print('usage: xpub push discourse topic (<number> <filename> | help)\n')
     else: 
@@ -653,7 +659,9 @@ def push_discourse_new():
         print('\nAvailable formats:')
         print('  number    category number where topic must land (required)')
         print('  "title"   title of new topic (required, must be quoted)')
-        print('  filename  markdown file containing topic content\n')
+        print('  filename  markdown file containing topic content')
+        print('\nNotes')
+        print('  Discourse API access is configured in /etc/yaml.  See the github for an example file.\n')
     elif(len(sys.argv) < 8):
         print('usage: xpub push discourse new (category <number> "<title>" "<filename>" | help\n')
     else:
@@ -741,7 +749,9 @@ def push_discourse_tagged():
         print('  Tagged paragraphs which match a mentioned tag are pushed.')
         print('  Tagged paragraphs which do not match any mentioned tags are not pushed.')
         print('  Tags are HTML comments with the <tag> keyword (by itself) on the comment line;')
-        print('    for example: \n\t\t"<!-- ui" \n\t\t <paragraph content> \n\t\t "ui -->"\n')
+        print('    for example: \n\t\t"<!-- ui" \n\t\t <paragraph content> \n\t\t "ui -->"')
+        print('\nNotes')
+        print('  Discourse API access is configured in /etc/yaml.  See the github for an example file.\n')
     elif(len(sys.argv) < 8):
         print('usage: xpub push discourse tagged topic <number> <filename> <tag> <tag> <tag>...\n')
     else:    
@@ -867,7 +877,8 @@ def push_discourse_all():
         print('  xpub push discourse all')
         print('\nNotes')
         print('  Files must be named "<slug>-<topic>.md", since xpub uses')
-        print('    the <topic> in the filename to decide where to land the markdown')
+        print('    the <topic> in the filename to decide where to land the markdown.\n')
+        print('  Discourse API access is configured in /etc/yaml.  See the github for an example file.\n')
         sys.exit()
     elif(len(sys.argv) != 4):
         print('xpub push dicourse  all (takes no options)')
@@ -1007,7 +1018,8 @@ def push_discourse_bulktag():
         print('  Tagged paragraphs which match a mentioned tag are pushed.')
         print('  Tagged paragraphs which do not match any mentioned tags are not pushed.')
         print('  Tags are HTML comments with the <tag> keyword (by itself) on the comment line;')
-        print('    for example, \n\t\t"<!-- ui" \n\t\t <paragraph content> \n\t\t "ui -->"\n')
+        print('    for example, \n\t\t"<!-- ui" \n\t\t <paragraph content> \n\t\t "ui -->"')
+        print('  Discourse API access is configured in /etc/yaml.  See the github for an example file.\n')
         sys.exit()
     elif(len(sys.argv) > 5):
         print("usage: xpub push discourse bulktag <tag> <tag> <tag>...")
@@ -1185,7 +1197,11 @@ def convert_markdown_single():
         print('\nUsage:')
         print('  xpub convert markdown single html <filename>')
         print('\nNotes:')
-        print('  xpub converts "<filename.ext" to "filename.html"')
+        print('  xpub converts "<filename.ext" to "filename.html"\n')
+        print('  xpub uses a simple HTML template to enclose the converted markdown,')
+        print('    unless you create a file called "template.html" in the CWD.')
+        print('    You can place the converted HTML anywhere in the template by')
+        print('    including a line with "{{content}}" in the template file.\n')
     elif(len(sys.argv) == 6 and sys.argv[4] == "html"):
         # read the markdown
         md_filename = str(sys.argv[5])
@@ -1233,7 +1249,11 @@ def convert_markdown_bulk():
         print('\nUsage:')
         print('  xpub convert markdown bulk html')
         print('\nNotes:')
-        print('  xpub converts "filename.ext" to "filename.html"')
+        print('  xpub converts "<filename.ext" to "filename.html"\n')
+        print('  xpub uses a simple HTML template to enclose the converted markdown,')
+        print('    unless you create a file called "template.html" in the CWD.')
+        print('    You can place the converted HTML anywhere in the template by')
+        print('    including a line with "{{content}}" in the template file.\n')
     elif(len(sys.argv) == 5 and sys.argv[4] == "html"):
         md_filename = str(sys.argv[4])
         basename = os.path.splitext(md_filename)[0]
@@ -1278,7 +1298,11 @@ def convert_discourse_single():
         print('\nUsage:')
         print('  xpub convert discourse single html <filename>')
         print('\nNotes:')
-        print('  xpub converts "<filename>" to "foo.html"')
+        print('  xpub converts "<filename.ext" to "filename.html"\n')
+        print('  xpub uses a simple HTML template to enclose the converted markdown,')
+        print('    unless you create a file called "template.html" in the CWD.')
+        print('    You can place the converted HTML anywhere in the template by')
+        print('    including a line with "{{content}}" in the template file.\n')
         print('  xpub expects the basename to be "<slug>-topicno",')
         print('    so xpub extracts <slug> and uses it as the doc title')
         print('    and corrects the title to sentence case, while also')
@@ -1337,7 +1361,11 @@ def convert_discourse_bulk():
         print('\nUsage:')
         print('  xpub convert discourse bulk html')
         print('\nNotes:')
-        print('  xpub converts "foo.md" to "foo.html"')
+        print('  xpub converts "<filename.ext" to "filename.html"\n')
+        print('  xpub uses a simple HTML template to enclose the converted markdown,')
+        print('    unless you create a file called "template.html" in the CWD.')
+        print('    You can place the converted HTML anywhere in the template by')
+        print('    including a line with "{{content}}" in the template file.\n')
         print('  xpub expects the filename to be "<slug>-topicno.md,"')
         print('    so xpub extracts <slug> and uses it as the doc title')
         print('    and corrects the title to sentence case, while also')
