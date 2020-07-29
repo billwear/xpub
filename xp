@@ -1,0 +1,58 @@
+#!/usr/bin/python3
+
+# xpub disc:maas-doc-25.dmd maas-doc-25.dmd
+# xpub maas-doc-25.dmd disc:maas-doc-25.dmd
+# xpub * git:repo.git
+# xpub git:repo.git *
+# xpub maas-doc-25.dmd maas-doc-25.html
+# xpub maas-doc-25.dmd .html
+# xpub maas-doc-25.html .dmd
+# xpub *.dmd *.html
+# xpub *.dmd *.html tag1 tag2 tag3
+# xpub *.dmd *.dmd tag1 tag2 tag3
+# xpub *.dmd newdir/*.dmd tag1 tag2 tag3
+# xpub https://discourse.maas.io/* . -c 5
+# xpub https://github.com/billwear/* .
+
+import click
+
+
+@click.command(
+    #    help="\b\nxpub: transfer files, transforming them as necessary"
+    #    + "\n\tSee manpage for details."
+)
+@click.option(
+    "-x", "xflag", help="flag for transforms that require it (varies by transform)"
+)
+@click.option("-a", "auth", help="output pattern (in quotes)")
+@click.option("-o", '"output"', help="output pattern (in quotes)")
+@click.option("-t", "tags", help="tags to tailor files in transformation")
+@click.argument("infile", nargs=-1)
+def cli(infile, output, xflag, tags, auth):
+    """xpub: transfer files, transforming them as necessary
+
+    \b
+    xpub reads INFILE using standard domain:filename parsing:
+        - https://discourse.mydomain.com:/*
+        - https://github.com/mylogin/mygitrepo:/zulu.cpp
+        - ./*machines*.dmd
+        - ~/some/other/accessible/directory/*.md
+
+    \b
+    xpub publishes to "output" transforming file if necessary:
+        - "html" writes HTML to stdout
+        - "somefile.html" writes HTML to ./somefile.html
+        - "../otherdir/*.dmd" creates ../otherdir if needed and writes 
+          discourse markup to <filename(s)>.dmd in ../otherdir
+        - "https://discourse.mydomain.com:*.dmd" publishes discourse markup
+          to your forum if it can glean auth, topic, and category info
+ 
+    xpub will pretty much do its best to figure out what you're trying to do,
+    and then do it, if it can. See the manpage or github README for details.
+    """
+    for x in infile:
+        print(x)
+
+
+if __name__ == "__main__":
+    cli()

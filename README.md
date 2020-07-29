@@ -16,6 +16,7 @@ Install it in your path and type `xpub help` to get started.
  - re
  - markdown
  - jinja2
+ - click
  - yaml
 
 Most of these are standard.
