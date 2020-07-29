@@ -61,21 +61,47 @@ def cli(infile, output, xflag, tags, auth):
         # decide what needs doing
         if output == None:
             outfile = sys.stdout
-        elif "//github.com/" in output:
-            response = subprocess.check_output(["git", "add", "."])
-            try:
-                response = subprocess.check_output(["git", "commit", "-m", "bot-push"])
-            except:
-                print("up to date")
-                sys.exit()
-            response = subprocess.check_output(["git", "push"])
+        elif "github.com" in output:
+            response = subprocess.check_output(["git", "add", x])
+            outfile = "github"
+        elif output == ".html" or output == "html":
+            if "htm" not in os.path.splitext(os.path.basename(x))[1]:
+                if os.path.splitext(os.path.basename(x))[1] == ".md":
+                    f = open(x, "r")
+                    extensions = {"extra", "smarty"}
+                    html = markdown.markdown(
+                        f.read(), extensions=extensions, output_format="html5"
+                    )
+                outfile = sys.stdout
+                TEMPLATE = """<!DOCTYPE html>
+                <html>
+                <body>
+                <div class="container">
+                {{content}}
+                </div>
+                </body>
+                </html>
+                """
+                buffer = jinja2.Template(TEMPLATE).render(content=html)
+            else:
+                pass
 
         # do it
-        ifile = open(x, "r")
-        buffer = ifile.read()
+    #        ifile = open(x, "r")
+    #        buffer = ifile.read()
 
-        # write output
-        print(x, buffer)
+    # output segment
+    if outfile == sys.stdout:
+        print(buffer, file=outfile)
+    elif outfile == "github":
+        response = subprocess.check_output(["git", "add", x])
+        try:
+            response = subprocess.check_output(["git", "commit", "-m", "bot-push"])
+        except:
+            print("up to date")
+            sys.exit()
+        response = subprocess.check_output(["git", "push"])
+        sys.exit()
 
 
 if __name__ == "__main__":
