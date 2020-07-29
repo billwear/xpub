@@ -55,6 +55,8 @@ def cli(infile, output, xflag, tags, auth):
     xpub will pretty much do its best to figure out what you're trying to do,
     and then do it, if it can. See the manpage or github README for details.
     """
+
+    outfile = ""
     # read infile(s)
     for x in infile:
 
