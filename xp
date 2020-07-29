@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 # xpub disc:maas-doc-25.dmd maas-doc-25.dmd
 # xpub maas-doc-25.dmd disc:maas-doc-25.dmd
 # xpub * git:repo.git
@@ -13,20 +12,24 @@
 # xpub *.dmd newdir/*.dmd tag1 tag2 tag3
 # xpub https://discourse.maas.io/* . -c 5
 # xpub https://github.com/billwear/* .
+import sys, subprocess, json, os, time, re, markdown, jinja2
+from yaml import load, dump
 
-import click
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    from yaml import Loader, Dumper
+
+import click, sys
 
 
-@click.command(
-    #    help="\b\nxpub: transfer files, transforming them as necessary"
-    #    + "\n\tSee manpage for details."
-)
+@click.command()
 @click.option(
-    "-x", "xflag", help="flag for transforms that require it (varies by transform)"
+    "-x", "xflag", help="flag for transforms that require it (varies by xform)."
 )
-@click.option("-a", "auth", help="output pattern (in quotes)")
-@click.option("-o", '"output"', help="output pattern (in quotes)")
-@click.option("-t", "tags", help="tags to tailor files in transformation")
+@click.option("-a", "auth", help="path to auth info, if needed.")
+@click.option("-o", "output", help="output pattern, in quotes.")
+@click.option("-t", "tags", help="tags to tailor files in transformation.")
 @click.argument("infile", nargs=-1)
 def cli(infile, output, xflag, tags, auth):
     """xpub: transfer files, transforming them as necessary
@@ -37,6 +40,7 @@ def cli(infile, output, xflag, tags, auth):
         - https://github.com/mylogin/mygitrepo:/zulu.cpp
         - ./*machines*.dmd
         - ~/some/other/accessible/directory/*.md
+        - ...etc.
 
     \b
     xpub publishes to "output" transforming file if necessary:
@@ -46,12 +50,32 @@ def cli(infile, output, xflag, tags, auth):
           discourse markup to <filename(s)>.dmd in ../otherdir
         - "https://discourse.mydomain.com:*.dmd" publishes discourse markup
           to your forum if it can glean auth, topic, and category info
+        - ...etc.
  
     xpub will pretty much do its best to figure out what you're trying to do,
     and then do it, if it can. See the manpage or github README for details.
     """
+    # read infile(s)
     for x in infile:
-        print(x)
+
+        # decide what needs doing
+        if output == None:
+            outfile = sys.stdout
+        elif "//github.com/" in output:
+            response = subprocess.check_output(["git", "add", "."])
+            try:
+                response = subprocess.check_output(["git", "commit", "-m", "bot-push"])
+            except:
+                print("up to date")
+                sys.exit()
+            response = subprocess.check_output(["git", "push"])
+
+        # do it
+        ifile = open(x, "r")
+        buffer = ifile.read()
+
+        # write output
+        print(x, buffer)
 
 
 if __name__ == "__main__":
