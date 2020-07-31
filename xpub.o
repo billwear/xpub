@@ -1,0 +1,1821 @@
+#!/usr/bin/python3
+
+import sys, subprocess, json, os, time, re, markdown, jinja2
+from yaml import load, dump
+
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    from yaml import Loader, Dumper
+
+
+def xpub():
+    print("usage: xpub (pull | push | convert | help)\n")
+
+
+def pull():
+    print("usage: xpub pull (discourse | github | help)\n")
+
+
+def pull_help():
+    print("\nDescription:")
+    print("  Pull files from github or discourse")
+    print("\nUsage:")
+    print("  xpub pull [source]")
+    print("\nAvailable sources:")
+    print("  github     pull files from github")
+    print("  discourse  pull files from discourse")
+    print('\nUse "xpub pull [source] help" for more information.\n')
+
+
+def pull_github():
+    print("usage: xpub pull github (all | file | help)\n")
+
+
+def pull_github_help():
+    print("\nDescription:")
+    print("  Pull github file(s) to existing github directory")
+    print("\nUsage:")
+    print("  xpub pull github [scope]")
+    print("\nAvailable scopes:")
+    print("  all        pull entire repo down to github directory")
+    print("  file       pull a specific file down")
+    print('\nUse "xpub pull github [scope] help" for more information.\n')
+
+
+def pull_github_all():
+    if len(sys.argv) == 5 and sys.argv[4] == "help":
+        print("\nDescription:")
+        print("  Pull an entire remote github into CWD\n")
+        print("  xpub confirms with user before executing")
+        print("\nUsage:")
+        print("  xpub pull github all")
+        print("\nNotes")
+        print("  CWD must be a valid local github repository\n")
+    elif len(sys.argv) == 4:
+        print("this will immediately pull the entire repo to the local CWD")
+        value = input("is this what you intended? (y/n) ")
+        if value == "y":
+            response = subprocess.check_output(["git", "fetch"])
+            response = subprocess.check_output(
+                ["git", "checkout", "origin/master", "--", "."]
+            )
+    else:
+        print("usage: xpub pull github all (no options)\n")
+
+
+def pull_github_file():
+    if len(sys.argv) < 5:
+        print("usage: xpub pull github file <filename\n")
+    elif sys.argv[4] == "help":
+        print("\nDescription:")
+        print("  Pull a single file from a remote github into CWD\n")
+        print("\nUsage:")
+        print("  xpub pull github file <filename>")
+        print("\nNotes")
+        print("  CWD must be a valid local github repository\n")
+    elif len(sys.argv) == 5:
+        filename = str(sys.argv[4])
+        response = subprocess.check_output(["git", "fetch"])
+        response = subprocess.check_output(
+            ["git", "checkout", "origin/master", "--", filename]
+        )
+    else:
+        print("usage: xpub pull github file <filename\n")
+
+
+def pull_discourse():
+    print("usage: xpub pull discourse (topic | range | category | help)\n")
+
+
+def pull_discourse_help():
+    print("\nDescription:")
+    print("  Pull discourse topics as discourse markdown file(s) to local directory")
+    print("\nUsage:")
+    print("  xpub pull discourse [scope]")
+    print("\nAvailable scopes:")
+    print("  topic      pull a single topic to local directory")
+    print("  range      pull a consecutive range of topic numbers")
+    print("  category   pull a consecutive range from a specific category")
+    print('\nUse "xpub pull discourse [scope] help" for more information.\n')
+
+
+def pull_discourse_topic():
+    if len(sys.argv) < 5:
+        print("usage: xpub pull discourse topic (<number> <filename> | help)\n")
+    elif sys.argv[4] == "help":
+        print("\nDescription:")
+        print("  Pull a single discourse topic from discourse API")
+        print("\nUsage:")
+        print("  xpub pull discourse topic <number> <filename>")
+        print("\nOptions")
+        print("  number     the discourse topic number to pull")
+        print("  filename   the filename in which the discourse markdown should land")
+        print("\nNotes")
+        print(
+            "  Discourse API access is configured in /etc/yaml.  See the github for an example file.\n"
+        )
+    elif len(sys.argv) != 6:
+        print("usage: xpub pull discourse topic (<number> <filename> | help)\n")
+    else:
+        filename = str(sys.argv[5])
+        topic = int(sys.argv[4])
+
+        # read config file to get api-key, api-usr, and discourse url
+        try:
+            cfile = open("/etc/dc.yaml", "r")
+        except:
+            print('xpub: couldn\'t open config file "/etc/dc.yaml"')
+            print("xpub: exiting")
+            sys.exit(4)
+        config_data = load(cfile, Loader=Loader)
+        cfile.close()
+
+        # run the shell command to get the topic and retain the result
+        proc = subprocess.Popen(
+            [
+                "curl",
+                "-X",
+                "GET",
+                "-H",
+                "Api-Key: " + config_data["api_key"],
+                "-H",
+                "Api-Username: " + config_data["api_username"],
+                "-H",
+                "Content-Type: application/json",
+                config_data["base_url"] + "/t/{" + str(topic) + "}.json",
+            ],
+            stdout=subprocess.PIPE,
+        )
+
+        # read the result into a usable buffer
+        output = proc.stdout.read()
+
+        # convert the result to json
+        try:
+            topic_json = json.loads(output)
+        except:
+            print("topic " + str(topic) + " doesn't exist; exiting")
+            sys.exit(4)
+
+        # extract the post ID from the topic json
+        post_id = topic_json["post_stream"]["posts"][0]["id"]
+        category_id = topic_json["category_id"]
+        deleted_at = topic_json["deleted_at"]
+        if deleted_at:
+            print("post deleted: not pulled from discourse")
+            sys.exit()
+
+        # save the intermediate topic json to a file
+        f2 = open("topic.json", "w")
+        f2.write(str(topic_json))
+        f2.close()
+
+        # read the post using the api, retaining the return value
+        proc2 = subprocess.Popen(
+            [
+                "curl",
+                "-X",
+                "GET",
+                "-H",
+                "Api-Key: " + config_data["api_key"],
+                "-H",
+                "Api-Username: " + config_data["api_username"],
+                "-H",
+                "Content-Type: application/json",
+                config_data["base_url"] + "/posts/{" + str(post_id) + "}.json",
+            ],
+            stdout=subprocess.PIPE,
+        )
+
+        # copy the return value to a suitable buffer
+        output2 = proc2.stdout.read()
+
+        # convert the returned post to json
+        post_json = json.loads(output2)
+
+        # write the intermediate post json to a file
+        f2 = open("post.json", "w")
+        f2.write(str(post_json))
+        f2.close()
+
+        # extract the article markdown from the json output
+        raw = post_json["raw"]
+
+        # write the article markdown to the specified file
+        f = open(filename, "w")
+        f.write(str(raw))
+        f.close()
+
+
+def pull_discourse_range():
+    if len(sys.argv) < 5:
+        print("usage: xpub pull discourse range (<low> <high> | help)\n")
+    elif sys.argv[4] == "help":
+        print("\nDescription:")
+        print("  Pull a range of topics from the discourse API")
+        print("\nUsage:")
+        print("  xpub pull discourse range <low> <high>")
+        print("\nOptions")
+        print("  low        the lowest topic number to pull")
+        print("  high       the highest topic number to pull")
+        print("\nNotes")
+        print('  Topics are placed in filenames of the form "<slug>-<topicno>.md";')
+        print('  for example, if topic 1811 is "How to cook bacon" the output file')
+        print('  for that topic would be "how-to-cook-bacon-1811.md"\n')
+        print(
+            "  Discourse API access is configured in /etc/yaml.  See the github for an example file.\n"
+        )
+    elif len(sys.argv) != 6:
+        print("usage: xpub pull discourse range (<low> <high> | help)\n")
+    else:
+        start = int(sys.argv[4])
+        end = int(sys.argv[5])
+
+        # read config file to get api-key, api-usr, and discourse url
+        try:
+            cfile = open("/etc/dc.yaml", "r")
+        except:
+            print('xpub: unable to find config file "/etc/dc.yaml"')
+            print("xpub: exiting")
+            sys.exit(4)
+        config_data = load(cfile, Loader=Loader)
+        cfile.close()
+
+        # giant for loop to get the topic range specified
+        for tn in range(start, end + 1):
+
+            # sleep for 2.5 seconds - prevents discourse DDOS rejection
+            time.sleep(2.5)
+
+            # run the shell command to get the topic and retain the result
+            proc = subprocess.Popen(
+                [
+                    "curl",
+                    "-X",
+                    "GET",
+                    "-H",
+                    "Api-Key: " + config_data["api_key"],
+                    "-H",
+                    "Api-Username: " + config_data["api_username"],
+                    "-H",
+                    "Content-Type: application/json",
+                    config_data["base_url"] + "/t/{" + str(tn) + "}.json",
+                ],
+                stdout=subprocess.PIPE,
+            )
+
+            # read the result into a usable buffer
+            output = proc.stdout.read()
+
+            # debug output: what topic were you pulling?
+            print("topic = " + str(tn))
+
+            # convert the result to json
+            try:
+                topic_json = json.loads(output)
+            except:
+                continue
+
+            # extract the post ID from the topic json
+            post_id = topic_json["post_stream"]["posts"][0]["id"]
+            autoname = (
+                topic_json["post_stream"]["posts"][0]["topic_slug"]
+                + "-"
+                + str(tn)
+                + ".md"
+            )
+            deleted_at = topic_json["deleted_at"]
+            if deleted_at:
+                print("post deleted: not pulled from discourse")
+                continue
+
+            # read the post using the api, retaining the return value
+            proc2 = subprocess.Popen(
+                [
+                    "curl",
+                    "-X",
+                    "GET",
+                    "-H",
+                    "Api-Key: " + config_data["api_key"],
+                    "-H",
+                    "Api-Username: " + config_data["api_username"],
+                    "-H",
+                    "Content-Type: application/json",
+                    config_data["base_url"] + "/posts/{" + str(post_id) + "}.json",
+                ],
+                stdout=subprocess.PIPE,
+            )
+
+            # copy the return value to a suitable buffer
+            output2 = proc2.stdout.read()
+
+            # convert the returned post to json
+            post_json = json.loads(output2)
+
+            # extract the article markdown from the json output
+            raw = post_json["raw"]
+
+            # write the article markdown to the specified file
+            f = open(autoname, "w")
+            f.write(str(raw))
+            f.close()
+
+        # exit now, as this run is finished
+        sys.exit(0)
+
+
+def pull_discourse_category():
+    if len(sys.argv) < 5:
+        print(
+            "usage: xpub pull discourse category (<number> range <low> <high> | help)\n"
+        )
+    elif sys.argv[4] == "help":
+        print("\nDescription:")
+        print("  Pull a range of topics from a single category via the discourse API")
+        print("\nUsage:")
+        print("  xpub pull discourse category <number> range <low> <high>")
+        print("\nOptions")
+        print("  number     the category number to pull from")
+        print("  low        the lowest topic number to pull")
+        print("  high       the highest topic number to pull")
+        print("\nNotes")
+        print('  Topics are placed in filenames of the form "<slug>-<topicno>.md";')
+        print('  for example, if topic 1811 is "How to cook bacon" the output file')
+        print('  for that topic would be "how-to-cook-bacon-1811.md"\n')
+        print(
+            "  Discourse API access is configured in /etc/yaml.  See the github for an example file.\n"
+        )
+    elif len(sys.argv) != 8:
+        print(
+            "usage: xpub pull discourse category (<number> range <low> <high> | help)\n"
+        )
+    else:
+        start = int(sys.argv[6])
+        end = int(sys.argv[7])
+        categoryid = int(sys.argv[4])
+
+        # read config file to get api-key, api-usr, and discourse url
+        try:
+            cfile = open("/etc/dc.yaml", "r")
+        except:
+            print('xpub: unable to find config file "/etc/dc.yaml"')
+            print("xpub: exiting")
+            sys.exit(4)
+        config_data = load(cfile, Loader=Loader)
+        cfile.close()
+
+        # giant for loop to get the topic range specified
+        for tn in range(start, end + 1):
+
+            # sleep for 2.5 seconds - prevents discourse DDOS rejection
+            time.sleep(2.5)
+
+            # run the shell command to get the topic and retain the result
+            proc = subprocess.Popen(
+                [
+                    "curl",
+                    "-X",
+                    "GET",
+                    "-H",
+                    "Api-Key: " + config_data["api_key"],
+                    "-H",
+                    "Api-Username: " + config_data["api_username"],
+                    "-H",
+                    "Content-Type: application/json",
+                    config_data["base_url"] + "/t/{" + str(tn) + "}.json",
+                ],
+                stdout=subprocess.PIPE,
+            )
+
+            # read the result into a usable buffer
+            output = proc.stdout.read()
+
+            # debug output: what topic were you pulling?
+            print("topic = " + str(tn))
+
+            # convert the result to json
+            try:
+                topic_json = json.loads(output)
+            except:
+                continue
+
+            # extract the post ID from the topic json
+            post_id = topic_json["post_stream"]["posts"][0]["id"]
+            category_id = topic_json["category_id"]
+            if (category_id is None) or (categoryid != int(category_id)):
+                continue
+            autoname = (
+                topic_json["post_stream"]["posts"][0]["topic_slug"]
+                + "-"
+                + str(tn)
+                + ".md"
+            )
+            deleted_at = topic_json["deleted_at"]
+            if deleted_at:
+                print("post deleted: not pulled from discourse")
+                continue
+
+            # read the post using the api, retaining the return value
+            proc2 = subprocess.Popen(
+                [
+                    "curl",
+                    "-X",
+                    "GET",
+                    "-H",
+                    "Api-Key: " + config_data["api_key"],
+                    "-H",
+                    "Api-Username: " + config_data["api_username"],
+                    "-H",
+                    "Content-Type: application/json",
+                    config_data["base_url"] + "/posts/{" + str(post_id) + "}.json",
+                ],
+                stdout=subprocess.PIPE,
+            )
+
+            # copy the return value to a suitable buffer
+            output2 = proc2.stdout.read()
+
+            # convert the returned post to json
+            post_json = json.loads(output2)
+
+            # extract the article markdown from the json output
+            raw = post_json["raw"]
+
+            # write the article markdown to the specified file
+            f = open(autoname, "w")
+            f.write(str(raw))
+            f.close()
+
+        # exit now, as this run is finished
+        sys.exit(0)
+
+
+def push():
+    print("usage: xpub push (discourse | github | help)\n")
+
+
+def push_help():
+    print("\nDescription:")
+    print("  Push local files to github or discourse")
+    print("\nUsage:")
+    print("  xpub push [destination]")
+    print("\nAvailable destinations:")
+    print("  github     push files to github")
+    print("  discourse  push files to discourse")
+    print('\nUse "xpub push [destination] help" for more information.\n')
+
+
+def push_github():
+    print("usage: xpub push github (all | file | help)\n")
+
+
+def push_github_help():
+    print("\nDescription:")
+    print("  Push files from local github to master")
+    print("\nUsage:")
+    print("  xpub push github [scope]")
+    print("\nAvailable scopes:")
+    print("  all        push entire repo")
+    print("  file       push a specific file")
+    print('\nUse "xpub push github [scope] help" for more information.\n')
+
+
+def push_github_all():
+    if len(sys.argv) == 5 and sys.argv[4] == "help":
+        print("\nDescription:")
+        print("  Push a local github repo up to master\n")
+        print("  xpub confirms with the user before executing")
+        print("\nUsage:")
+        print("  xpub push github all")
+        print("\nNotes")
+        print("  xpub does everything for you (add, commit, push, etc.)")
+        print("  CWD must be the correct local github directory\n")
+        sys.exit()
+    elif len(sys.argv) != 4:
+        print("xpub push github all (takes no options)")
+        sys.exit()
+
+    print("this will immediately push the entire repo to github")
+    value = input("is this what you intended? (y/n) ")
+    if value != "y":
+        sys.exit()
+
+    response = subprocess.check_output(["git", "add", "."])
+    try:
+        response = subprocess.check_output(["git", "commit", "-m", "bot-push"])
+    except:
+        print("up to date")
+        sys.exit()
+    response = subprocess.check_output(["git", "push"])
+
+
+def push_github_file():
+    if len(sys.argv) < 5:
+        print("usage: xpub push github file <filename>\n")
+    elif len(sys.argv) == 5 and sys.argv[4] == "help":
+        print("\nDescription:")
+        print("  Push a local file up to master repo")
+        print("\nUsage:")
+        print("  xpub push github file <filename>")
+        print("\nNotes")
+        print("  xpub does everything for you (add, commit, push, etc.)")
+        print("  CWD must be the correct local github directory\n")
+    elif len(sys.argv) != 5:
+        print("usage: xpub push github file <filename>\n")
+    else:
+        filename = str(sys.argv[4])
+        response = subprocess.check_output(["git", "add", filename])
+        try:
+            response = subprocess.check_output(["git", "commit", "-m", "bot-push"])
+        except:
+            print("up to date")
+            sys.exit()
+
+        response = subprocess.check_output(["git", "push"])
+
+
+def push_discourse():
+    print("usage: xpub push discourse (topic | new | tagged | all | bulktag | help)\n")
+
+
+def push_discourse_help():
+    print("\nDescription:")
+    print("  Push discourse markdown to discourse API")
+    print("\nUsage:")
+    print("  xpub push discourse [scope]")
+    print("\nAvailable scopes:")
+    print("  topic      push a single discourse topic")
+    print("  new        create a new discourse topic")
+    print("  tagged     create a conditional topic based on tags")
+    print("  all        push entire CWD of discourse topics to discourse")
+    print("  bulktag    push entire CWD based on tagging")
+    print('\nUse "xpub push discourse [scope] help" for more information.\n')
+
+
+def push_discourse_topic():
+    if len(sys.argv) < 5:
+        print("usage: xpub push discourse topic (<number> <filename> | help)")
+    elif sys.argv[4] == "help":
+        print("\nDescription:")
+        print("  Push a single discourse topic file to discourse")
+        print("\nUsage:")
+        print("  xpub push discourse topic <number> <filename>")
+        print("\nOptions")
+        print("  number     the discourse topic number where the markdown should land")
+        print("  filename   the filename from which to read the discourse markdown")
+        print("\nNotes")
+        print(
+            "  Discourse API access is configured in /etc/yaml.  See the github for an example file.\n"
+        )
+    elif len(sys.argv) != 6:
+        print("usage: xpub push discourse topic (<number> <filename> | help)\n")
+    else:
+        topic = sys.argv[4]
+        filename = sys.argv[5]
+
+        # read config file to get api-key, api-usr, and discourse url
+        try:
+            cfile = open("/etc/dc.yaml", "r")
+        except:
+            print('xpub: unable to find config file "/etc/dc.yaml"')
+            print("xpub: exiting")
+            sys.exit(4)
+        config_data = load(cfile, Loader=Loader)
+        cfile.close()
+
+        # run the shell command to get the topic and retain the result
+        proc = subprocess.Popen(
+            [
+                "curl",
+                "-X",
+                "GET",
+                "-H",
+                "Api-Key: " + config_data["api_key"],
+                "-H",
+                "Api-Username: " + config_data["api_username"],
+                "-H",
+                "Content-Type: application/json",
+                config_data["base_url"] + "/t/{" + str(topic) + "}.json",
+            ],
+            stdout=subprocess.PIPE,
+        )
+
+        # read the result into a usable buffer
+        output = proc.stdout.read()
+
+        # convert the result to json
+        try:
+            topic_json = json.loads(output)
+        except:
+            print("topic " + str(topic) + " doesn't exist; exiting")
+            sys.exit(4)
+
+        # extract the post ID from the topic json
+        post_id = topic_json["post_stream"]["posts"][0]["id"]
+        category_id = topic_json["category_id"]
+        deleted_at = topic_json["deleted_at"]
+        if deleted_at:
+            print("post deleted: not pushed from discourse")
+            sys.exit()
+
+        # load and convert the specified markdown file
+        f = open(filename, "r")
+        markdown = f.read()
+
+        # pad the markdown to 9000 chars to avoid discourse bug
+        outstr = markdown.ljust(9000)
+
+        # create a dictionary buffer for the markdown
+        data = {}
+
+        # place the markdown against a key called "raw" (the json key reqd by discourse)
+        data["raw"] = outstr
+
+        # open a temporary json file to store the markdown as json
+        f = open("foo.json", "w")
+
+        # convert the markdown to json and store it in the temp file
+        f.write(json.dumps(data))
+
+        # close the temp file for completeness
+        f.close()
+
+        # set the url and auth data as read from the yaml config file
+        url = config_data["base_url"] + "/posts/{" + str(post_id) + "}.json"
+        apikey = "Api-Key: " + config_data["api_key"]
+        apiusername = "Api-Username: " + config_data["api_username"]
+
+        # use the curl command to re-post the markdown into discourse
+        response = subprocess.check_output(
+            [
+                "curl",
+                "-X",
+                "PUT",
+                url,
+                "-H",
+                apikey,
+                "-H",
+                apiusername,
+                "-H",
+                "Content-Type: application/json",
+                "-d",
+                "@foo.json",
+            ]
+        )
+
+        # remove the temporary json file
+        os.remove("foo.json")
+
+
+def push_discourse_new():
+    if len(sys.argv) < 5:
+        print(
+            'usage: xpub push discourse new (category <number> "<title>" <filename> | help)\n'
+        )
+    elif sys.argv[4] == "help":
+        print("\nDescription:")
+        print("  Push a new topic to discourse from a local file")
+        print("\nUsage:")
+        print('  xpub push discourse new category <number> "title" <filename>')
+        print("\nAvailable formats:")
+        print("  number    category number where topic must land (required)")
+        print('  "title"   title of new topic (required, must be quoted)')
+        print("  filename  markdown file containing topic content")
+        print("\nNotes")
+        print(
+            "  Discourse API access is configured in /etc/yaml.  See the github for an example file.\n"
+        )
+    elif len(sys.argv) < 8:
+        print(
+            'usage: xpub push discourse new (category <number> "<title>" "<filename>" | help\n'
+        )
+    else:
+
+        filename = str(sys.argv[7])
+        title = str(sys.argv[6])
+        categoryid = int(sys.argv[5])
+
+        # read config file to get api-key, api-usr, and discourse url
+        try:
+            cfile = open("/etc/dc.yaml", "r")
+        except:
+            print('xpub: cannot open "/etc/dc.yaml"')
+            print("xpub: exiting")
+            sys.exit(4)
+
+        config_data = load(cfile, Loader=Loader)
+        cfile.close()
+
+        # load and convert the specified markdown file
+        f = open(filename, "r")
+        markdown = f.read()
+
+        # pad the markdown to 9000 chars to avoid discourse bug
+        outstr = markdown.ljust(9000)
+
+        # create a dictionary buffer for the markdown
+        data = {}
+
+        # place the markdown in the appropriate json keys
+        data["title"] = title
+        data["category"] = categoryid
+        data["raw"] = outstr
+
+        # open a temporary json file to store the markdown as json
+        f = open("foo.json", "w")
+
+        # convert the markdown to json and store it in the temp file
+        f.write(json.dumps(data))
+
+        # close the temp file for completeness
+        f.close()
+
+        # set the url and auth data as read from the yaml config file
+        url = config_data["base_url"] + "/posts.json"
+        apikey = "Api-Key: " + config_data["api_key"]
+        apiusername = "Api-Username: " + config_data["api_username"]
+
+        # use the curl command to re-post the markdown into discourse
+        response = subprocess.check_output(
+            [
+                "curl",
+                "-X",
+                "POST",
+                url,
+                "-H",
+                apikey,
+                "-H",
+                apiusername,
+                "-H",
+                "Content-Type: application/json",
+                "-d",
+                "@foo.json",
+            ]
+        )
+
+        # remove the temporary files
+        os.remove("foo.json")
+
+
+def push_discourse_tagged():
+    if len(sys.argv) < 5:
+        print(
+            "usage: xpub push discourse tagged topic <number> <filename> <tag> <tag> <tag>...\n"
+        )
+    elif len(sys.argv) == 5 and sys.argv[4] == "help":
+        print("\nDescription:")
+        print(
+            "  Push conditional discourse topics to discourse, based on embedded tags"
+        )
+        print("\nUsage:")
+        print("  xpub push discourse tagged topic <number> <filename> <tag>...")
+        print("\nOptions:")
+        print("  pull       pull files from discourse or github")
+        print("  <number>   the discourse topic number where the markdown should land")
+        print("  <filename> the file from which to pull the tagged markdown")
+        print("  <tag>...   one or more embedded tags in the discourse markdown file")
+        print("\nNotes:")
+        print("  Tagged files are used to produce customized documentation, based on")
+        print("    tags such as version number, interface, customer industry, etc.")
+        print("  Paragraphs which are not tagged are always pushed.")
+        print("  Tagged paragraphs which match a mentioned tag are pushed.")
+        print(
+            "  Tagged paragraphs which do not match any mentioned tags are not pushed."
+        )
+        print(
+            "  Tags are HTML comments with the <tag> keyword (by itself) on the comment line;"
+        )
+        print(
+            '    for example: \n\t\t"<!-- ui" \n\t\t <paragraph content> \n\t\t "ui -->"'
+        )
+        print("\nNotes")
+        print(
+            "  Discourse API access is configured in /etc/yaml.  See the github for an example file.\n"
+        )
+    elif len(sys.argv) < 8:
+        print(
+            "usage: xpub push discourse tagged topic <number> <filename> <tag> <tag> <tag>...\n"
+        )
+    else:
+        topic = sys.argv[5]
+        filename = sys.argv[6]
+        tags = []
+        for x in range(7, len(sys.argv)):
+            tags.append(str(sys.argv[x]))
+
+        # read config file to get api-key, api-usr, and discourse url
+        try:
+            cfile = open("/etc/dc.yaml", "r")
+        except:
+            print('xpub: unable to find config file "/etc/dc.yaml"')
+            print("xpub: exiting")
+            sys.exit(4)
+        config_data = load(cfile, Loader=Loader)
+        cfile.close()
+
+        # run the shell command to get the topic and retain the result
+        proc = subprocess.Popen(
+            [
+                "curl",
+                "-X",
+                "GET",
+                "-H",
+                "Api-Key: " + config_data["api_key"],
+                "-H",
+                "Api-Username: " + config_data["api_username"],
+                "-H",
+                "Content-Type: application/json",
+                config_data["base_url"] + "/t/{" + str(topic) + "}.json",
+            ],
+            stdout=subprocess.PIPE,
+        )
+
+        # read the result into a usable buffer
+        output = proc.stdout.read()
+
+        # convert these result to json
+        try:
+            topic_json = json.loads(output)
+        except:
+            print("topic " + str(topic) + " doesn't exist; exiting")
+            sys.exit(4)
+
+        # extract the post ID from the topic json
+        post_id = topic_json["post_stream"]["posts"][0]["id"]
+        category_id = topic_json["category_id"]
+        deleted_at = topic_json["deleted_at"]
+        if deleted_at:
+            print("post deleted: not pushed from discourse")
+            sys.exit()
+
+        # switch in conditional sections based on tags
+        if tags:
+            condfile = "cond_" + filename
+            tag_count = len(tags)
+            for x in range(tag_count):
+                grepcli = 'grep -v "<!--[ ]*' + str(tags[x]) + '" '
+                grepcli += filename + " | grep -v "
+                grepcli += '"' + str(tags[x]) + '[ ]*-->" >'
+                grepcli += condfile
+                os.system(grepcli)
+                cpcli = "cp " + condfile + " tmp.md"
+                os.system(cpcli)
+                filename = "tmp.md"
+
+            os.system("rm " + condfile)
+
+        # load and convert the specified markdown file
+        f = open(filename, "r")
+        markdown = f.read()
+        f.close()
+        os.system("rm " + filename)
+
+        # pad the markdown to 9000 chars to avoid discourse bug
+        outstr = markdown.ljust(9000)
+
+        # create a dictionary buffer for the markdown
+        data = {}
+
+        # place the markdown against a key called "raw" (the json key reqd by discourse)
+        data["raw"] = outstr
+
+        # open a temporary json file to store the markdown as json
+        f = open("foo.json", "w")
+
+        # convert the markdown to json and store it in the temp file
+        f.write(json.dumps(data))
+
+        # close the temp file for completeness
+        f.close()
+
+        # set the url and auth data as read from the yaml config file
+        url = config_data["base_url"] + "/posts/{" + str(post_id) + "}.json"
+        apikey = "Api-Key: " + config_data["api_key"]
+        apiusername = "Api-Username: " + config_data["api_username"]
+
+        # use the curl command to re-post the markdown into discourse
+        response = subprocess.check_output(
+            [
+                "curl",
+                "-X",
+                "PUT",
+                url,
+                "-H",
+                apikey,
+                "-H",
+                apiusername,
+                "-H",
+                "Content-Type: application/json",
+                "-d",
+                "@foo.json",
+            ]
+        )
+
+        # remove the temporary json file
+        os.remove("foo.json")
+
+
+def push_discourse_all():
+    if len(sys.argv) == 5 and sys.argv[4] == "help":
+        print("\nDescription:")
+        print("  Push all discourse markdown files in CWD to discourse API\n")
+        print("  xpub confirms with the user before executing")
+        print("\nUsage:")
+        print("  xpub push discourse all")
+        print("\nNotes")
+        print('  Files must be named "<slug>-<topic>.md", since xpub uses')
+        print("    the <topic> in the filename to decide where to land the markdown.\n")
+        print(
+            "  Discourse API access is configured in /etc/yaml.  See the github for an example file.\n"
+        )
+        sys.exit()
+
+    elif len(sys.argv) != 4:
+        print("xpub push dicourse  all (takes no options)")
+        sys.exit()
+
+    print("this will immediately push the entire directory to discourse")
+    value = input("is this what you intended? (y/n) ")
+    if value != "y":
+        sys.exit()
+
+    directory = "."
+    topic = 0
+
+    # read config file to get api-key, api-usr, and discourse url
+    try:
+        cfile = open("/etc/dc.yaml", "r")
+    except:
+        print('xpub: couldn\'t open config file "/etc/dc.yaml"')
+        print("xpub: exiting")
+        sys.exit(4)
+    config_data = load(cfile, Loader=Loader)
+    cfile.close()
+
+    for mdfilename in os.listdir(directory):
+
+        # get the topic number from the filename
+        if mdfilename.endswith(".md"):
+            flist = mdfilename.split("-")
+            fl2 = flist[-1].split(".")
+            if fl2[0].isnumeric():
+                topic = int(fl2[0])
+            else:
+                continue
+        else:
+            continue
+
+        filename = mdfilename
+
+        # run the shell command to get the topic and retain the result
+        proc = subprocess.Popen(
+            [
+                "curl",
+                "-X",
+                "GET",
+                "-H",
+                "Api-Key: " + config_data["api_key"],
+                "-H",
+                "Api-Username: " + config_data["api_username"],
+                "-H",
+                "Content-Type: application/json",
+                config_data["base_url"] + "/t/{" + str(topic) + "}.json",
+            ],
+            stdout=subprocess.PIPE,
+        )
+
+        # read the result into a usable buffer
+        output = proc.stdout.read()
+
+        # convert the result to json
+        try:
+            topic_json = json.loads(output)
+        except:
+            print("topic " + str(topic) + " doesn't exist; exiting")
+            sys.exit(4)
+
+        # extract the post ID from the topic json
+        post_id = topic_json["post_stream"]["posts"][0]["id"]
+        category_id = topic_json["category_id"]
+        deleted_at = topic_json["deleted_at"]
+        if deleted_at:
+            print("post deleted: not pushed from discourse")
+            sys.exit()
+
+        # load and convert the specified markdown file
+        f = open(filename, "r")
+        markdown = f.read()
+
+        # pad the markdown to 9000 chars to avoid discourse bug
+        outstr = markdown.ljust(9000)
+
+        # create a dictionary buffer for the markdown
+        data = {}
+
+        # place the markdown against a key called "raw" discourse)
+        data["raw"] = outstr
+
+        # open a temporary json file to store the markdown as json
+        f = open("foo.json", "w")
+
+        # convert the markdown to json and store it in the temp file
+        f.write(json.dumps(data))
+
+        # close the temp file for completeness
+        f.close()
+
+        # set the url and auth data as read from the yaml config file
+        url = config_data["base_url"] + "/posts/{" + str(post_id) + "}.json"
+        apikey = "Api-Key: " + config_data["api_key"]
+        apiusername = "Api-Username: " + config_data["api_username"]
+
+        # use the curl command to re-post the markdown into discourse
+        response = subprocess.check_output(
+            [
+                "curl",
+                "-X",
+                "PUT",
+                url,
+                "-H",
+                apikey,
+                "-H",
+                apiusername,
+                "-H",
+                "Content-Type: application/json",
+                "-d",
+                "@foo.json",
+            ]
+        )
+
+        # remove the temporary json file
+        os.remove("foo.json")
+
+
+def push_discourse_bulktag():
+    if len(sys.argv) < 5:
+        print("usage: xpub push discourse bulktag <tag> <tag> <tag>...")
+        sys.exit()
+    elif len(sys.argv) == 5 and sys.argv[4] == "help":
+        print("\nDescription:")
+        print("  Push conditional discourse topics to discourse, based on embedded")
+        print("    tags, pushing all discourse markdown files in CWD")
+        print("\nUsage:")
+        print("  xpub push discourse bulktag <tag>...")
+        print("\nOptions:")
+        print("  <tag>...   one or more embedded tags in the discourse markdown file")
+        print("\nNotes:")
+        print('  Files must be named in the form "<slug>-<topicno>.md" where ')
+        print("    <topicno> is the discourse topic number where a given file's")
+        print("    markdown should land.")
+        print("  Tagged files are used to produce customized documentation, based on")
+        print("    tags such as version number, interface, customer industry, etc.")
+        print("  Paragraphs which are not tagged are always pushed.")
+        print("  Tagged paragraphs which match a mentioned tag are pushed.")
+        print(
+            "  Tagged paragraphs which do not match any mentioned tags are not pushed."
+        )
+        print(
+            "  Tags are HTML comments with the <tag> keyword (by itself) on the comment line;"
+        )
+        print(
+            '    for example, \n\t\t"<!-- ui" \n\t\t <paragraph content> \n\t\t "ui -->"'
+        )
+        print(
+            "  Discourse API access is configured in /etc/yaml.  See the github for an example file.\n"
+        )
+        sys.exit()
+    elif len(sys.argv) > 5:
+        print("usage: xpub push discourse bulktag <tag> <tag> <tag>...")
+        sys.exit()
+
+    directory = "."
+    topic = 0
+    tags = []
+    for x in range(4, len(sys.argv)):
+        tags.append(str(sys.argv[x]))
+
+    # read config file to get api-key, api-usr, and discourse url
+    try:
+        cfile = open("/etc/dc.yaml", "r")
+    except:
+        print('xpub: couldn\'t open config file "/etc/dc.yaml"')
+        print("xpub: exiting")
+        sys.exit(4)
+    config_data = load(cfile, Loader=Loader)
+    cfile.close()
+
+    for mdfilename in os.listdir(directory):
+
+        # get the topic number from the filename
+        if mdfilename.endswith(".md"):
+            flist = mdfilename.split("-")
+            fl2 = flist[-1].split(".")
+            if fl2[0].isnumeric():
+                topic = int(fl2[0])
+            else:
+                continue
+        else:
+            continue
+
+        filename = mdfilename
+
+        # switch in conditional sections based on tags
+        if tags:
+            condfile = "cond_" + filename
+            tag_count = len(tags)
+            for x in range(tag_count):
+                grepcli = 'grep -v "<!--[ ]*' + str(tags[x]) + '" '
+                grepcli += filename + " | grep -v "
+                grepcli += '"' + str(tags[x]) + '[ ]*-->" > '
+                grepcli += condfile
+                os.system(grepcli)
+                cpcli = "cp " + condfile + " tmp.md"
+                os.system(cpcli)
+                filename = "tmp.md"
+
+            filename = "tmp.md"
+            os.system("rm " + condfile)
+
+        # run the shell command to get the topic and retain the result
+        proc = subprocess.Popen(
+            [
+                "curl",
+                "-X",
+                "GET",
+                "-H",
+                "Api-Key: " + config_data["api_key"],
+                "-H",
+                "Api-Username: " + config_data["api_username"],
+                "-H",
+                "Content-Type: application/json",
+                config_data["base_url"] + "/t/{" + str(topic) + "}.json",
+            ],
+            stdout=subprocess.PIPE,
+        )
+
+        # read the result into a usable buffer
+        output = proc.stdout.read()
+
+        # convert the result to json
+        try:
+            topic_json = json.loads(output)
+        except:
+            print("topic " + str(topic) + " doesn't exist; exiting")
+            sys.exit(4)
+
+        # extract the post ID from the topic json
+        post_id = topic_json["post_stream"]["posts"][0]["id"]
+        category_id = topic_json["category_id"]
+        deleted_at = topic_json["deleted_at"]
+        if deleted_at:
+            print("post deleted: not pushed from discourse")
+            sys.exit()
+
+        outfile_name = filename
+
+        # load and convert the specified markdown file
+        f = open(outfile_name, "r")
+        markdown = f.read()
+
+        # pad the markdown to 9000 chars to avoid discourse bug
+        outstr = markdown.ljust(9000)
+
+        # create a dictionary buffer for the markdown
+        data = {}
+
+        # place the markdown against a key called "raw" discourse)
+        data["raw"] = outstr
+
+        # open a temporary json file to store the markdown as json
+        f = open("foo.json", "w")
+
+        # convert the markdown to json and store it in the temp file
+        f.write(json.dumps(data))
+
+        # close the temp file for completeness
+        f.close()
+
+        # set the url and auth data as read from the yaml config file
+        url = config_data["base_url"] + "/posts/{" + str(post_id) + "}.json"
+        apikey = "Api-Key: " + config_data["api_key"]
+        apiusername = "Api-Username: " + config_data["api_username"]
+
+        # use the curl command to re-post the markdown into discourse
+        response = subprocess.check_output(
+            [
+                "curl",
+                "-X",
+                "PUT",
+                url,
+                "-H",
+                apikey,
+                "-H",
+                apiusername,
+                "-H",
+                "Content-Type: application/json",
+                "-d",
+                "@foo.json",
+            ]
+        )
+
+        # remove the temporary json file
+        os.remove("foo.json")
+
+
+def convert():
+    print("usage: xpub convert (markdown | discourse | help)\n")
+
+
+def convert_help():
+    print("\nDescription:")
+    print("  Convert local documents to other formats")
+    print("\nUsage:")
+    print("  xpub convert [doctype]")
+    print("\nAvailable doctypess:")
+    print('  markdown   generic "daring fireball" markdown')
+    print("  discourse  discourse markdown (repoints links & fixes titles)")
+    print('\nUse "xpub convert [doctype] help" for more information.\n')
+
+
+def convert_markdown():
+    print("usage: xpub convert markdown (single | bulk | help)\n")
+
+
+def convert_markdown_help():
+    print("\nDescription:")
+    print("  Convert daring fireball markdown to other formats")
+    print("\nUsage:")
+    print("  xpub convert markdown [scope]")
+    print("\nAvailable scopes:")
+    print("  single     convert a single markdown file")
+    print("  bulk       convert all .md files in CWD")
+    print('\nUse "xpub convert markdown [scope] help" for more information.\n')
+
+
+def convert_markdown_single():
+    if len(sys.argv) < 5:
+        print("usage: xpub convert markdown single ([format] [filename] | help)\n")
+    elif sys.argv[4] == "help" and len(sys.argv) == 5:
+        print("\nDescription:")
+        print("  Convert a single daring fireball markdown file to other formats")
+        print("\nUsage:")
+        print("  xpub convert markdown single [format]")
+        print("\nAvailable formats:")
+        print("  html       convert markdown file <filename> to html")
+        print(
+            '\nUse "xpub convert markdown single [format] help" for more information.\n'
+        )
+    elif len(sys.argv) == 6 and sys.argv[5] == "help" and sys.argv[4] == "html":
+        print("\nDescription:")
+        print("  Convert single daring fireball markdown file to HTML")
+        print("\nUsage:")
+        print("  xpub convert markdown single html <filename>")
+        print("\nNotes:")
+        print('  xpub converts "<filename.ext" to "filename.html"\n')
+        print("  xpub uses a simple HTML template to enclose the converted markdown,")
+        print('    unless you create a file called "template.html" in the CWD.')
+        print("    You can place the converted HTML anywhere in the template by")
+        print('    including a line with "{{content}}" in the template file.\n')
+    elif len(sys.argv) == 6 and sys.argv[4] == "html":
+        # read the markdown
+        md_filename = str(sys.argv[5])
+        basename = os.path.splitext(md_filename)[0]
+        html_filename = basename + ".html"
+        mdf = open(md_filename, "r")
+        md = mdf.read()
+
+        # convert the corrected markdown to html
+        extensions = {"extra", "smarty"}
+        html = markdown.markdown(md, extensions=extensions, output_format="html5")
+        htmlf = open(html_filename, "w")
+        try:
+            template_file = open("template.html", "r")
+            TEMPLATE = template_file.read()
+        except:
+            TEMPLATE = """<!DOCTYPE html>
+            <html>
+            <body>
+            <div class="container">
+            {{content}}
+            </div>
+            </body>
+            </html>
+            """
+        doc = jinja2.Template(TEMPLATE).render(content=html)
+        htmlf.write(doc)
+    else:
+        print("usage: xpub convert markdown single ([format] [filename] | help)\n")
+
+
+def convert_markdown_bulk():
+    if len(sys.argv) < 5:
+        print("usage: xpub convert markdown bulk (html)\n")
+    elif sys.argv[4] == "help":
+        print("\nDescription:")
+        print("  Convert entire CWD of daring fireball markdown to other formats")
+        print("\nUsage:")
+        print("  xpub convert markdown bulk [format]")
+        print("\nAvailable formats:")
+        print("  html       convert all .md files to html")
+        print(
+            '\nUse "xpub convert markdown bulk [format] help" for more information.\n'
+        )
+    elif len(sys.argv) == 6 and sys.argv[5] == "help" and sys.argv[4] == "html":
+        print("\nDescription:")
+        print("  Convert entire CWD of daring fireball markdown to HTML")
+        print("\nUsage:")
+        print("  xpub convert markdown bulk html")
+        print("\nNotes:")
+        print('  xpub converts "<filename.ext" to "filename.html"\n')
+        print("  xpub uses a simple HTML template to enclose the converted markdown,")
+        print('    unless you create a file called "template.html" in the CWD.')
+        print("    You can place the converted HTML anywhere in the template by")
+        print('    including a line with "{{content}}" in the template file.\n')
+    elif len(sys.argv) == 5 and sys.argv[4] == "html":
+        md_filename = str(sys.argv[4])
+        basename = os.path.splitext(md_filename)[0]
+        html_filename = basename + ".html"
+        mdf = open(md_filename, "r")
+        md = mdf.read()
+        extensions = {"extra", "smarty"}
+        html = markdown.markdown(md, extensions=extensions, output_format="html5")
+        htmlf = open(html_filename, "w")
+        doc = jinja2.Template(TEMPLATE).render(content=html)
+        htmlf.write(doc)
+
+
+def convert_discourse():
+    print("usage: xpub convert discourse (single | bulk | help)\n")
+
+
+def convert_discourse_help():
+    print("\nDescription:")
+    print("  Convert discourse markdown to other formats\n")
+    print("  Discourse uses non-standard title and link formats,")
+    print("  xpub corrects these elements using this doctype.")
+    print("\nUsage:")
+    print("  xpub convert discourse [scope]")
+    print("\nAvailable scopes:")
+    print("  single     convert a single discourse markdown file")
+    print("  bulk       convert all .md files in CWD")
+    print('\nUse "xpub convert discourse [scope] help" for more information.\n')
+
+
+def convert_discourse_single():
+    if len(sys.argv) < 5:
+        print("usage: xpub convert discourse single ([format] [filename] | help)\n")
+    elif sys.argv[4] == "help" and len(sys.argv) == 5:
+        print("\nDescription:")
+        print("  Convert a single discourse markdown file to other formats")
+        print("\nUsage:")
+        print("  xpub convert discourse single [format]")
+        print("\nAvailable formats:")
+        print("  html       convert discourse markdown file <filename> to html")
+        print(
+            '\nUse "xpub convert discourse single [format] help" for more information.\n'
+        )
+    elif len(sys.argv) == 6 and sys.argv[5] == "help" and sys.argv[4] == "html":
+        print("\nDescription:")
+        print("  Convert single discourse markdown file to HTML")
+        print("\nUsage:")
+        print("  xpub convert discourse single html <filename>")
+        print("\nNotes:")
+        print('  xpub converts "<filename.ext" to "filename.html"\n')
+        print("  xpub uses a simple HTML template to enclose the converted markdown,")
+        print('    unless you create a file called "template.html" in the CWD.')
+        print("    You can place the converted HTML anywhere in the template by")
+        print('    including a line with "{{content}}" in the template file.\n')
+        print('  xpub expects the basename to be "<slug>-topicno",')
+        print("    so xpub extracts <slug> and uses it as the doc title")
+        print("    and corrects the title to sentence case, while also")
+        print("    capitalizing any acronyms it knows about.  For example,")
+        print('    "select-os-image" becomes "Select OS image"\n')
+    elif len(sys.argv) == 6 and sys.argv[4] == "html":
+        # read the markdown
+        md_filename = str(sys.argv[5])
+        basename = os.path.splitext(md_filename)[0]
+        html_filename = basename + ".html"
+        mdf = open(md_filename, "r")
+        md = mdf.read()
+
+        # correct majority of the links
+        cmd2 = re.sub(r"https://discourse.maas.io/t", "/t", md)
+        cmd1 = re.sub(r"/t/([a-z0-9-]*)/([0-9]*)#", r"\1-\2.html#", cmd2)
+        cmd = re.sub(r"/t/([a-z0-9-]*)/([0-9]*)", r"\1-\2.html", cmd1)
+
+        # convert the corrected markdown to html
+        extensions = {"extra", "smarty"}
+        html = markdown.markdown(cmd, extensions=extensions, output_format="html5")
+        htmlf = open(html_filename, "w")
+        try:
+            template_file = open("template.html", "r")
+            TEMPLATE = template_file.read()
+        except:
+            TEMPLATE = """<!DOCTYPE html>
+            <html>
+            <body>
+            <div class="container">
+            {{content}}
+            </div>
+            </body>
+            </html>
+            """
+        doc = jinja2.Template(TEMPLATE).render(content=html)
+        htmlf.write(doc)
+    else:
+        print("usage: xpub convert discourse single ([format] [filename] | help)\n")
+
+
+def convert_discourse_tagged():
+    if len(sys.argv) < 5:
+        print(
+            "usage: xpub convert discourse tagged ([format] [filename] [tag] [tag]... | help)\n"
+        )
+    elif sys.argv[4] == "help" and len(sys.argv) == 5:
+        print("\nDescription:")
+        print("  Convert a single discourse markdown file to other formats,")
+        print("    tailoring document according to tags while converting")
+        print("\nUsage:")
+        print("  xpub convert discourse single [format]")
+        print("\nAvailable formats:")
+        print("  html       convert discourse markdown file <filename> to html")
+        print(
+            '\nUse "xpub convert discourse tagged [format] help" for more information.\n'
+        )
+    elif len(sys.argv) == 6 and sys.argv[5] == "help" and sys.argv[4] == "html":
+        print("\nDescription:")
+        print("  Convert single discourse markdown file to HTML,")
+        print("    using tags to tailor file while converting it")
+        print("\nUsage:")
+        print("  xpub convert discourse tagged html <filename>")
+        print("\nNotes:")
+        print('  xpub converts "<filename.ext" to "filename.html"\n')
+        print("  xpub uses a simple HTML template to enclose the converted markdown,")
+        print('    unless you create a file called "template.html" in the CWD.')
+        print("    You can place the converted HTML anywhere in the template by")
+        print('    including a line with "{{content}}" in the template file.\n')
+        print('  xpub expects the basename to be "<slug>-topicno",')
+        print("    so xpub extracts <slug> and uses it as the doc title")
+        print("    and corrects the title to sentence case, while also")
+        print("    capitalizing any acronyms it knows about.  For example,")
+        print('    "select-os-image" becomes "Select OS image"\n')
+        print("  Tagged files are used to produce customized documentation, based on")
+        print("    tags such as version number, interface, customer industry, etc.")
+        print("  Paragraphs which are not tagged are always pushed.")
+        print("  Tagged paragraphs which match a mentioned tag are pushed.")
+        print(
+            "  Tagged paragraphs which do not match any mentioned tags are not pushed."
+        )
+        print(
+            "  Tags are HTML comments with the <tag> keyword (by itself) on the comment line;"
+        )
+        print(
+            '    for example, \n\t\t"<!-- ui" \n\t\t <paragraph content> \n\t\t "ui -->"'
+        )
+    elif len(sys.argv) > 6 and sys.argv[4] == "html":
+        tags = []
+        for x in sys.argv[6:]:
+            tags.append(x)
+
+        # switch in conditional sections based on tags
+        md_filename = str(sys.argv[5])
+        if tags:
+            condfile = "cond_" + md_filename
+            for x in tags:
+                grepcli = 'grep -v "<!--[ ]*' + str(x) + '" '
+                grepcli += md_filename + " | grep -v "
+                grepcli += '"' + str(x) + '[ ]*-->" > '
+                grepcli += condfile
+                os.system(grepcli)
+                cpcli = "cp " + condfile + " tmp.md"
+                os.system(cpcli)
+                filename = "tmp.md"
+
+            filename = "tmp.md"
+            os.system("rm " + condfile)
+
+        # compute the page title
+        basename = os.path.splitext(md_filename)[0]
+        page_title = basename
+        page_title = page_title.replace("maas", "MAAS")
+        page_title = page_title.replace("api", "API")
+        page_title = page_title.replace("dhcp", "DHCP")
+        page_title = page_title.replace("stp", "STP")
+        page_title = page_title.replace("ntp", "NTP")
+        page_title = page_title.replace("cli", "CLI")
+        page_title = page_title.replace("vmfs", "VMFS")
+        page_title = page_title.replace("vm", "VM")
+        page_title = page_title.replace("CLIent", "client")
+        page_title = page_title.replace("tls", "TLS")
+        page_title = page_title.rstrip("-0123456789")
+        page_title = page_title.replace("-", " ")
+        page_title = page_title[0].upper() + page_title[1:]
+
+        # read the markdown file
+        html_filename = basename + ".html"
+        mdf = open(filename, "r")
+        md = mdf.read()
+
+        # correct majority of the links
+        cmd2 = re.sub(r"https://discourse.maas.io/t", "/t", md)
+        cmd1 = re.sub(r"/t/([a-z0-9-]*)/([0-9]*)#", r"\1-\2.html#", cmd2)
+        cmd = re.sub(r"/t/([a-z0-9-]*)/([0-9]*)", r"\1-\2.html", cmd1)
+
+        # convert the corrected markdown to html
+        extensions = {"extra", "smarty"}
+        html = markdown.markdown(cmd, extensions=extensions, output_format="html5")
+        html = "<h1>" + page_title + "</h1>" + html
+        htmlf = open(html_filename, "w")
+        try:
+            template_file = open("template.html", "r")
+            TEMPLATE = template_file.read()
+        except:
+            TEMPLATE = """<!DOCTYPE html>
+            <html>
+            <body>
+            <div class="container">
+            {{content}}
+            </div>
+            </body>
+            </html>
+            """
+        doc = jinja2.Template(TEMPLATE).render(content=html)
+        htmlf.write(doc)
+        htmlf.close()
+
+    else:
+        print("usage: xpub convert discourse single ([format] [filename] | help)\n")
+
+
+def convert_discourse_bulk():
+    if len(sys.argv) < 5:
+        print("usage: xpub convert discourse bulk (html | help)\n")
+    elif sys.argv[4] == "help":
+        print("\nDescription:")
+        print("  Convert entire CWD of discourse markdown to other formats")
+        print("\nUsage:")
+        print("  xpub convert discourse bulk [format]")
+        print("\nAvailable formats:")
+        print("  html       convert all .md files to html")
+        print(
+            '\nUse "xpub convert markdown bulk [format] help" for more information.\n'
+        )
+    elif len(sys.argv) == 6 and sys.argv[5] == "help":
+        print("\nDescription:")
+        print("  Convert entire CWD of discourse markdown to HTML\n")
+        print("  xpub confirms with the user before executing the command")
+        print("\nUsage:")
+        print("  xpub convert discourse bulk html")
+        print("\nNotes:")
+        print('  xpub converts "<filename.ext" to "filename.html"\n')
+        print("  xpub uses a simple HTML template to enclose the converted markdown,")
+        print('    unless you create a file called "template.html" in the CWD.')
+        print("    You can place the converted HTML anywhere in the template by")
+        print('    including a line with "{{content}}" in the template file.\n')
+        print('  xpub expects the filename to be "<slug>-topicno.md,"')
+        print("    so xpub extracts <slug> and uses it as the doc title")
+        print("    and corrects the title to sentence case, while also")
+        print("    capitalizing any acronyms it knows about.  For example,")
+        print('    "select-os-image" becomes "Select OS image"\n')
+    elif sys.argv[4] == "html":
+        print("this will immediately convert all .md files in CWD to HTML")
+        value = input("is this what you intended? (y/n) ")
+        if value != "y":
+            sys.exit()
+
+        for mdfilename in os.listdir("."):
+            if mdfilename.endswith(".md"):
+                basename = str(os.path.splitext(mdfilename)[0])
+                page_title = basename
+                page_title = page_title.replace("maas", "MAAS")
+                page_title = page_title.replace("api", "API")
+                page_title = page_title.replace("dhcp", "DHCP")
+                page_title = page_title.replace("stp", "STP")
+                page_title = page_title.replace("ntp", "NTP")
+                page_title = page_title.replace("cli", "CLI")
+                page_title = page_title.replace("vmfs", "VMFS")
+                page_title = page_title.replace("vm", "VM")
+                page_title = page_title.replace("CLIent", "client")
+                page_title = page_title.replace("tls", "TLS")
+                page_title = page_title.rstrip("-0123456789")
+                page_title = page_title.replace("-", " ")
+                page_title = page_title[0].upper() + page_title[1:]
+                html_filename = basename + ".html"
+                mdf = open(mdfilename, "r")
+                md = mdf.read()
+
+                # correct majority of the links
+                cmd2 = re.sub(r"https://discourse.maas.io/t", "/t", md)
+                cmd1 = re.sub(r"/t/([a-z0-9-]*)/([0-9]*)#", r"\1-\2.html#", cmd2)
+                cmd = re.sub(r"/t/([a-z0-9-]*)/([0-9]*)", r"\1-\2.html", cmd1)
+
+                # convert the corrected markdown to html
+                extensions = {"extra", "smarty"}
+                html = markdown.markdown(
+                    cmd, extensions=extensions, output_format="html5"
+                )
+                html = "<h1>" + page_title + "</h1>" + html
+                htmlf = open(html_filename, "w")
+                try:
+                    template_file = open("template.html", "r")
+                    TEMPLATE = template_file.read()
+                except:
+                    TEMPLATE = """<!DOCTYPE html>
+                    <html>
+                    <body>
+                    <div class="container">
+                    {{content}}
+                    </div>
+                    </body>
+                    </html>
+                    """
+
+                doc = jinja2.Template(TEMPLATE).render(content=html)
+                htmlf.write(doc)
+
+
+def convert_discourse_bulktag():
+    if len(sys.argv) < 5:
+        print("usage: xpub convert discourse bulktag (html | help) [tag] [tag]...\n")
+    elif sys.argv[4] == "help":
+        print("\nDescription:")
+        print("  Convert entire CWD of discourse markdown to other formats,")
+        print("    tailoring text to tags")
+        print("\nUsage:")
+        print("  xpub convert discourse bulk [format] [tag] [tag]...")
+        print("\nAvailable formats:")
+        print("  html       convert all .md files to html")
+        print(
+            '\nUse "xpub convert markdown bulk [format] help" for more information.\n'
+        )
+    elif len(sys.argv) == 6 and sys.argv[5] == "help":
+        print("\nDescription:")
+        print("  Convert entire CWD of discourse markdown to HTML")
+        print("     tailoring text to tags as needed\n")
+        print("  xpub confirms with the user before executing the command")
+        print("\nUsage:")
+        print("  xpub convert discourse bulk html [tag] [tag]...")
+        print("\nNotes:")
+        print('  xpub converts "<filename.ext" to "filename.html"\n')
+        print("  xpub uses a simple HTML template to enclose the converted markdown,")
+        print('    unless you create a file called "template.html" in the CWD.')
+        print("    You can place the converted HTML anywhere in the template by")
+        print('    including a line with "{{content}}" in the template file.\n')
+        print('  xpub expects the filename to be "<slug>-topicno.md,"')
+        print("    so xpub extracts <slug> and uses it as the doc title")
+        print("    and corrects the title to sentence case, while also")
+        print("    capitalizing any acronyms it knows about.  For example,")
+        print('    "select-os-image" becomes "Select OS image"\n')
+    elif len(sys.argv) > 5 and sys.argv[4] == "html":
+        print("this will immediately convert all .md files in CWD to HTML")
+        value = input("is this what you intended? (y/n) ")
+        if value != "y":
+            sys.exit()
+        tags = []
+        for x in sys.argv[5:]:
+            tags.append(x)
+
+        for mdfilename in os.listdir("."):
+            filename = mdfilename
+            if mdfilename.endswith(".md"):
+                # switch in conditional sections based on tags
+                if tags:
+                    condfile = "cond_" + mdfilename
+                    for x in tags:
+                        grepcli = 'grep -v "<!--[ ]*' + str(x) + '" '
+                        grepcli += mdfilename + " | grep -v "
+                        grepcli += '"' + str(x) + '[ ]*-->" > '
+                        grepcli += condfile
+                        os.system(grepcli)
+                        cpcli = "cp " + condfile + " tmp.md"
+                        os.system(cpcli)
+                        filename = "tmp.md"
+
+                    filename = "tmp.md"
+                    os.system("rm " + condfile)
+
+                basename = str(os.path.splitext(mdfilename)[0])
+                page_title = basename
+                page_title = page_title.replace("maas", "MAAS")
+                page_title = page_title.replace("api", "API")
+                page_title = page_title.replace("dhcp", "DHCP")
+                page_title = page_title.replace("stp", "STP")
+                page_title = page_title.replace("ntp", "NTP")
+                page_title = page_title.replace("cli", "CLI")
+                page_title = page_title.replace("vmfs", "VMFS")
+                page_title = page_title.replace("vm", "VM")
+                page_title = page_title.replace("CLIent", "client")
+                page_title = page_title.replace("tls", "TLS")
+                page_title = page_title.rstrip("-0123456789")
+                page_title = page_title.replace("-", " ")
+                page_title = page_title[0].upper() + page_title[1:]
+                html_filename = basename + ".html"
+                mdf = open(filename, "r")
+                md = mdf.read()
+
+                # correct majority of the links
+                cmd2 = re.sub(r"https://discourse.maas.io/t", "/t", md)
+                cmd1 = re.sub(r"/t/([a-z0-9-]*)/([0-9]*)#", r"\1-\2.html#", cmd2)
+                cmd = re.sub(r"/t/([a-z0-9-]*)/([0-9]*)", r"\1-\2.html", cmd1)
+
+                # convert the corrected markdown to html
+                extensions = {"extra", "smarty"}
+                html = markdown.markdown(
+                    cmd, extensions=extensions, output_format="html5"
+                )
+                html = "<h1>" + page_title + "</h1>" + html
+                htmlf = open(html_filename, "w")
+                try:
+                    template_file = open("template.html", "r")
+                    TEMPLATE = template_file.read()
+                except:
+                    TEMPLATE = """<!DOCTYPE html>
+                    <html>
+                    <body>
+                    <div class="container">
+                    {{content}}
+                    </div>
+                    </body>
+                    </html>
+                    """
+
+                doc = jinja2.Template(TEMPLATE).render(content=html)
+                htmlf.write(doc)
+
+
+def helps():
+    print("\nDescription:")
+    print("  Command line discourse/github publishing tool\n")
+    print("  All of xpub's capabiities can be accessed through the commands below.")
+    print('  For hints, just type "xpub command" or any part of a command sequence.\n')
+    print('  For detailed help with any of them, just add "help" after the sequence.')
+    print("\nUsage:")
+    print("  xpub [command]")
+    print("\nAvailable commands:")
+    print("  pull       pull files from discourse or github")
+    print('  push       push files to discourse or github, including "new" options.')
+    print("  convert    convert files from one format to another.\n")
+
+
+################################################################################
+
+fdict = {
+    "help": helps,
+    "push": push,
+    "push discourse": push_discourse,
+    "push discourse topic": push_discourse_topic,
+    "push discourse new": push_discourse_new,
+    "push discourse tagged": push_discourse_tagged,
+    "push discourse all": push_discourse_all,
+    "push discourse bulktag": push_discourse_bulktag,
+    "push github": push_github,
+    "push github all": push_github_all,
+    "push github file": push_github_file,
+    "pull": pull,
+    "pull discourse": pull_discourse,
+    "pull discourse topic": pull_discourse_topic,
+    "pull discourse category": pull_discourse_category,
+    "pull discourse range": pull_discourse_range,
+    "pull github": pull_github,
+    "pull github all": pull_github_all,
+    "pull github file": pull_github_file,
+    "pull github help": pull_github_help,
+    "convert": convert,
+    "convert markdown": convert_markdown,
+    "convert markdown bulk": convert_markdown_bulk,
+    #         'convert markdown single': convert_markdown_single,
+    "convert discourse": convert_discourse,
+    "convert discourse single": convert_discourse_single,
+    "convert discourse bulk": convert_discourse_bulk,
+    "convert discourse help": convert_discourse_help,
+    "convert markdown help": convert_markdown_help,
+    "convert discourse tagged": convert_discourse_tagged,
+    "convert discourse bulktag": convert_discourse_bulktag,
+    "push help": push_help,
+    "pull help": pull_help,
+    "pull discourse help": pull_discourse_help,
+    "push discourse help": push_discourse_help,
+    "push github help": push_github_help,
+    "convert markdown single": convert_markdown_single,
+    "convert help": convert_help,
+}
+
+keystring = ""
+
+for x in range(1, len(sys.argv)):
+    if x > 1:
+        keystring += " "
+    keystring += sys.argv[x]
+    if x == 3:
+        break
+
+try:
+    fn = fdict[keystring]
+except:
+    fn = helps
+
+if len(sys.argv) == 1:
+    fn = xpub
+
+fn()

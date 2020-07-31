@@ -400,7 +400,7 @@ def discourse(tag, files):
         os.remove("foo.json")
 
 
-@push.group(help="Push files to a github repo from the working directory")
+@push.command(help="Push files to a github repo from the working directory")
 def github():
     response = subprocess.check_output(["git", "add", "."])
     try:
