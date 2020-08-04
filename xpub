@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import sys, subprocess, json, os, time, re, markdown, jinja2
+from shutil import copyfile
 from yaml import load, dump
 
 try:
@@ -400,7 +401,7 @@ def discourse(tag, files):
         os.remove("foo.json")
 
 
-@push.group(help="Push files to a github repo from the working directory")
+@push.command(help="Push files to a github repo from the working directory")
 def github():
     response = subprocess.check_output(["git", "add", "."])
     try:
@@ -416,9 +417,9 @@ def dir():
     pass
 
 
-@convert.group()
+@convert.command()
 @click.argument("files", nargs=-1)
-def md2html():
+def md2html(files):
     """Convert markdown files to html
 
     Filenames can contain wildcards.  HTML output is 
@@ -432,7 +433,12 @@ def md2html():
     for x in files:
         basename = os.path.splitext(x)[0]
         html_filename = basename + ".html"
-        mdf = open(x, "r")
+        copyfile(x, "mdc.tmp")
+        os.system("sed -i 's/<details>/zorkD/g' mdc.tmp")
+        os.system("sed -i 's/<summary>/zorkS/g' mdc.tmp")
+        os.system("sed -i 's/<\/details>/zorkDC/g' mdc.tmp")
+        os.system("sed -i 's/<\/summary>/zorkSC/g' mdc.tmp")
+        mdf = open("mdc.tmp", "r")
         md = mdf.read()
         extensions = {"extra", "smarty"}
         html = markdown.markdown(md, extensions=extensions, output_format="html5")
@@ -452,6 +458,11 @@ def md2html():
             """
         doc = jinja2.Template(TEMPLATE).render(content=html)
         htmlf.write(doc)
+        htmlf.close()
+        os.system("sed -i 's/zorkDC/<\/details>/g' " + html_filename)
+        os.system("sed -i 's/zorkSC/<\/summary>/g' " + html_filename)
+        os.system("sed -i 's/zorkD/<details>/g' " + html_filename)
+        os.system("sed -i 's/zorkS/<summary>/g' " + html_filename)
 
 
 @convert.command()
@@ -483,20 +494,27 @@ def dc2html(tag, files):
     """
 
     for mdfilename in files:
-        filename = mdfilename
         if mdfilename.endswith(".md"):
+
+            # clean up the html peculiarities
+            copyfile(mdfilename, "mdc.tmp")
+            os.system("sed -i 's/<details>/zorkD/g' mdc.tmp")
+            os.system("sed -i 's/<summary>/zorkS/g' mdc.tmp")
+            os.system("sed -i 's/<\/details>/zorkDC/g' mdc.tmp")
+            os.system("sed -i 's/<\/summary>/zorkSC/g' mdc.tmp")
+            filename = "mdc.tmp"
+
             # switch in conditional sections based on tags
             if tag:
-                condfile = "cond_" + mdfilename
+                condfile = "cond_mdc.tmp"
                 grepcli = 'grep -v "<!--[ ]*' + str(tag) + '" '
-                grepcli += mdfilename + " | grep -v "
+                grepcli += "mdc.tmp | grep -v "
                 grepcli += '"' + str(tag) + '[ ]*-->" > '
                 grepcli += condfile
                 os.system(grepcli)
-                cpcli = "cp " + condfile + " tmp.md"
-                os.system(cpcli)
+                copyfile(condfile, "tmp.md")
                 filename = "tmp.md"
-                os.system("rm " + condfile)
+                os.remove(condfile)
 
             basename = str(os.path.splitext(mdfilename)[0])
             page_title = basename
@@ -543,6 +561,11 @@ def dc2html(tag, files):
 
             doc = jinja2.Template(TEMPLATE).render(content=html)
             htmlf.write(doc)
+            htmlf.close()
+            os.system("sed -i 's/zorkDC/<\/details>/g' " + html_filename)
+            os.system("sed -i 's/zorkSC/<\/summary>/g' " + html_filename)
+            os.system("sed -i 's/zorkD/<details>/g' " + html_filename)
+            os.system("sed -i 's/zorkS/<summary>/g' " + html_filename)
 
 
 if __name__ == "__main__":
