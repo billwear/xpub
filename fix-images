@@ -1,0 +1,83 @@
+#!/bin/bash
+import sys, subprocess, re, os
+
+xpub pull discourse -c 5 -b not-rad 1 1900
+sed -i '/^## Navigation/,$d' maas-documentation-25.md
+grep http *.md > http-list
+grep .png http-list > png-list-mixed
+grep -v src png-list-mixed > png-list
+sed -i 's/^.*(//g' png-list
+sed -i 's/)[[:blank:]]*$//g' png-list
+grep src png-list-mixed > img-src-list
+sed -i 's/^.*src=\"//g' img-src-list
+sed -i 's/.png\".*$/.png/g' img-src-list
+grep .jpeg http-list > jpeg-list
+sed -i 's/^.*(//g' jpeg-list
+sed -i 's/)[[:blank:]]*$//g' jpeg-list
+cat jpeg-list png-list img-src-list > image-list
+sed -i 's/^/wget /g' image-list
+sort -u image-list > image-pull.sh
+cp image-pull.sh images
+cd images
+chmod 777 image-pull.sh
+./image-pull.sh
+cd ..
+sed -i 's/https:\/\/discourse.maas.io\/uploads\/default\/optimized\/1X/..\/images/g' *.md
+sed -i 's/https:\/\/discourse.maas.io\/uploads\/default\/original\/1X/..\/images/g' *.md
+sed -i 's/upload:\/\//..\/images/g' *.md
+sed -i 's/https:\/\/assets.ubuntu.com\/v1/..\/images/g' *.md
+sed -i "s/\(^\!\[.*\)/<!-- vanilla\n\1\n vanilla -->\n\n<!-- ui\n\1\n ui -->\n\n<!-- cli\n### ADD SUITABLE CLI EXAMPLE OR PRINTOUT ###\n cli -->/g" *.md
+cd images
+FILES = ./*
+for f in $FILES
+do
+   exiv2 $f | grep "Image size" | sed 's/^.*: ([0-9]*) x/\1/'
+
+
+
+basedir = "/home/stormrider/src/git/maas-rad/images/"
+
+images = os.listdir(basedir)
+
+props = []
+for x in images:
+    props.append(str(subprocess.check_output(["file", basedir + x])))
+
+names = []
+rem = []
+for x in props:
+    line = x.split("'")[1].split(":")
+    names.append(line[0].split("/")[-1])
+    rem.append(str(line).split(","))
+
+height = []
+width = []
+for y in rem:
+    match = False
+    for x in y:
+        if re.match("[ ]*[0-9]*[ ]*x[ ]*[0-9][ ]*", x.strip()):
+            width.append(x.strip().split("x")[0].strip())
+            height.append(x.strip().split("x")[1].strip())
+            match = True
+    if match == False:
+        width.append("none")
+        height.append("none")
+
+for i in range(0, len(names)):
+    try:
+        if width[i] == "none":
+            del width[i]
+            del height[i]
+            del names[i]
+    except:
+        continue
+
+for i in range(0, len(names)):
+    aratio = 690.0 / float(width[i])
+    awidth = int(float(width[i]) * aratio)
+    aheight = int(float(height[i]) * aratio)
+    width[i] = str(awidth)
+    height[i] = str(aheight)
+
+    print("grep", names[i], "*.md")
+    print(width[i] + "x" + height[i])

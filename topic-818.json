@@ -1,0 +1,462 @@
+{
+    "actions_summary": [
+        {
+            "can_act": true,
+            "count": 0,
+            "hidden": false,
+            "id": 4
+        },
+        {
+            "can_act": true,
+            "count": 0,
+            "hidden": false,
+            "id": 8
+        },
+        {
+            "can_act": true,
+            "count": 0,
+            "hidden": false,
+            "id": 7
+        }
+    ],
+    "archetype": "regular",
+    "archived": false,
+    "bookmarked": false,
+    "category_id": 5,
+    "chunk_size": 20,
+    "closed": false,
+    "created_at": "2019-07-01T21:50:25.921Z",
+    "current_post_number": 1,
+    "deleted_at": null,
+    "deleted_by": null,
+    "details": {
+        "can_convert_topic": true,
+        "can_create_post": true,
+        "can_delete": true,
+        "can_edit": true,
+        "can_flag_topic": true,
+        "can_invite_to": true,
+        "can_move_posts": true,
+        "can_remove_allowed_users": true,
+        "can_remove_self_id": 287,
+        "can_reply_as_new_topic": true,
+        "can_review_topic": true,
+        "created_by": {
+            "avatar_template": "/user_avatar/discourse.maas.io/system/{size}/27_2.png",
+            "id": -1,
+            "name": "system",
+            "username": "system"
+        },
+        "last_poster": {
+            "avatar_template": "/user_avatar/discourse.maas.io/system/{size}/27_2.png",
+            "id": -1,
+            "name": "system",
+            "username": "system"
+        },
+        "notification_level": 2,
+        "notifications_reason_id": null,
+        "participants": [
+            {
+                "avatar_template": "/user_avatar/discourse.maas.io/system/{size}/27_2.png",
+                "id": -1,
+                "name": "system",
+                "post_count": 1,
+                "primary_group_flair_bg_color": null,
+                "primary_group_flair_color": null,
+                "primary_group_flair_url": null,
+                "primary_group_name": null,
+                "username": "system"
+            }
+        ]
+    },
+    "draft": null,
+    "draft_key": "topic_818",
+    "draft_sequence": 11,
+    "fancy_title": "RSD storage",
+    "featured_link": null,
+    "has_deleted": false,
+    "has_summary": false,
+    "highest_post_number": 1,
+    "id": 818,
+    "last_posted_at": "2019-07-01T21:50:26.048Z",
+    "last_read_post_id": 1601,
+    "last_read_post_number": 1,
+    "like_count": 0,
+    "message_bus_last_id": 2,
+    "participant_count": 1,
+    "pinned": false,
+    "pinned_at": null,
+    "pinned_globally": false,
+    "pinned_until": null,
+    "post_stream": {
+        "posts": [
+            {
+                "accepted_answer": false,
+                "actions_summary": [
+                    {
+                        "can_act": true,
+                        "id": 2
+                    },
+                    {
+                        "can_act": true,
+                        "id": 3
+                    },
+                    {
+                        "can_act": true,
+                        "id": 4
+                    },
+                    {
+                        "can_act": true,
+                        "id": 8
+                    },
+                    {
+                        "can_act": true,
+                        "id": 7
+                    }
+                ],
+                "admin": true,
+                "avatar_template": "/user_avatar/discourse.maas.io/system/{size}/27_2.png",
+                "can_accept_answer": false,
+                "can_delete": false,
+                "can_edit": true,
+                "can_recover": null,
+                "can_unaccept_answer": false,
+                "can_view_edit_history": true,
+                "can_wiki": true,
+                "cooked": "<p><em><a href=\"/t/about-maas/840#heading--what-is-maas\">What is MAAS?</a></em>\u00a0\u00a0\u00a0\u00a0\u00a0<em><a href=\"/t/about-maas/840#heading--what-maas-offers\">What MAAS offers</a></em>\u00a0\u00a0\u00a0\u00a0\u00a0<em><a href=\"/t/about-maas/840#heading--how-maas-works\">How MAAS works</a></em></p>\n<hr>\n<p>MAAS auto-detects configured local and remote (iSCSI) RSD storage when you <a href=\"/t/add-an-rsd-host/815\">add an RSD host</a> and shows available storage, similar to what is shown below:</p>\n<p><div class=\"lightbox-wrapper\"><a class=\"lightbox\" href=\"https://assets.ubuntu.com/v1/46e17163-manage-rsd-storage__2.5__intel-rsd-storage.png\" title=\"46e17163-manage-rsd-storage__2.5__intel-rsd-storage.png\" rel=\"nofollow noopener\"><img src=\"https://assets.ubuntu.com/v1/46e17163-manage-rsd-storage__2.5__intel-rsd-storage.png\" alt=\"rsdresources\" width=\"301\" height=\"500\"><div class=\"meta\">\n<svg class=\"fa d-icon d-icon-far-image svg-icon\" aria-hidden=\"true\"><use xlink:href=\"#far-image\"></use></svg><span class=\"filename\">46e17163-manage-rsd-storage__2.5__intel-rsd-storage.png</span><span class=\"informations\">520\u00d7862</span><svg class=\"fa d-icon d-icon-discourse-expand svg-icon\" aria-hidden=\"true\"><use xlink:href=\"#discourse-expand\"></use></svg>\n</div></a></div></p>",
+                "created_at": "2019-07-01T21:50:26.048Z",
+                "deleted_at": null,
+                "display_username": "system",
+                "edit_reason": null,
+                "hidden": false,
+                "id": 1601,
+                "incoming_link_count": 16,
+                "last_wiki_edit": "2020-08-05T23:37:32.069Z",
+                "link_counts": [
+                    {
+                        "clicks": 0,
+                        "internal": false,
+                        "reflection": false,
+                        "title": "46e17163-manage-rsd-storage__2.5__intel-rsd-storage.png",
+                        "url": "https://assets.ubuntu.com/v1/46e17163-manage-rsd-storage__2.5__intel-rsd-storage.png"
+                    },
+                    {
+                        "clicks": 0,
+                        "internal": true,
+                        "reflection": false,
+                        "title": "About MAAS",
+                        "url": "https://discourse.maas.io/t/about-maas/840"
+                    },
+                    {
+                        "clicks": 0,
+                        "internal": true,
+                        "reflection": false,
+                        "title": "Add an RSD host",
+                        "url": "https://discourse.maas.io/t/add-an-rsd-host/815"
+                    },
+                    {
+                        "clicks": 0,
+                        "internal": true,
+                        "reflection": true,
+                        "title": "maas-documentation-rad",
+                        "url": "https://discourse.maas.io/t/maas-documentation-rad/1848"
+                    },
+                    {
+                        "clicks": 0,
+                        "internal": true,
+                        "reflection": true,
+                        "title": "MAAS Documentation",
+                        "url": "https://discourse.maas.io/t/maas-documentation/25"
+                    }
+                ],
+                "moderator": true,
+                "name": "system",
+                "post_number": 1,
+                "post_type": 1,
+                "primary_group_flair_bg_color": null,
+                "primary_group_flair_color": null,
+                "primary_group_flair_url": null,
+                "primary_group_name": null,
+                "quote_count": 0,
+                "read": true,
+                "reads": 3,
+                "reply_count": 0,
+                "reply_to_post_number": null,
+                "reviewable_id": 0,
+                "reviewable_score_count": 0,
+                "reviewable_score_pending_count": 0,
+                "score": 80.6,
+                "staff": true,
+                "topic_id": 818,
+                "topic_slug": "rsd-storage",
+                "trust_level": 4,
+                "updated_at": "2020-08-05T23:37:32.000Z",
+                "user_deleted": false,
+                "user_id": -1,
+                "user_title": null,
+                "username": "system",
+                "version": 7,
+                "wiki": true,
+                "yours": false
+            }
+        ],
+        "stream": [
+            1601
+        ]
+    },
+    "posted": false,
+    "posts_count": 1,
+    "private_topic_timer": null,
+    "reply_count": 0,
+    "slug": "rsd-storage",
+    "suggested_topics": [
+        {
+            "archetype": "regular",
+            "archived": false,
+            "bookmarked": null,
+            "bumped": true,
+            "bumped_at": "2020-08-05T23:10:40.854Z",
+            "can_have_answer": true,
+            "category_id": 4,
+            "closed": false,
+            "created_at": "2020-08-05T23:10:40.722Z",
+            "fancy_title": "MAAS 2.9 Release Schedule (Draft)",
+            "featured_link": null,
+            "has_accepted_answer": false,
+            "highest_post_number": 1,
+            "id": 1966,
+            "image_url": null,
+            "last_posted_at": "2020-08-05T23:10:40.854Z",
+            "like_count": 0,
+            "liked": null,
+            "pinned": false,
+            "posters": [
+                {
+                    "description": "Original Poster, Most Recent Poster",
+                    "extras": "latest single",
+                    "user": {
+                        "avatar_template": "/letter_avatar/ltrager/{size}/5_6d6f4cde2641c35611d5cac2fb97c77e.png",
+                        "id": 16,
+                        "name": "Lee Trager",
+                        "username": "ltrager"
+                    }
+                }
+            ],
+            "posts_count": 1,
+            "reply_count": 0,
+            "slug": "maas-2-9-release-schedule-draft",
+            "tags": [],
+            "title": "MAAS 2.9 Release Schedule (Draft)",
+            "unpinned": null,
+            "unseen": true,
+            "views": 1,
+            "visible": true
+        },
+        {
+            "archetype": "regular",
+            "archived": false,
+            "bookmarked": null,
+            "bumped": true,
+            "bumped_at": "2020-08-05T19:15:40.344Z",
+            "can_have_answer": true,
+            "category_id": 13,
+            "closed": false,
+            "created_at": "2020-08-05T15:23:33.116Z",
+            "fancy_title": "MAAS 2.8/edge - modifying UUID reported by enlisting node",
+            "featured_link": null,
+            "has_accepted_answer": false,
+            "highest_post_number": 2,
+            "id": 1965,
+            "image_url": null,
+            "last_posted_at": "2020-08-05T19:15:40.344Z",
+            "like_count": 0,
+            "liked": null,
+            "pinned": false,
+            "posters": [
+                {
+                    "description": "Original Poster",
+                    "extras": null,
+                    "user": {
+                        "avatar_template": "/user_avatar/discourse.maas.io/georcon/{size}/791_2.png",
+                        "id": 536,
+                        "name": "George Constantine",
+                        "username": "georcon"
+                    }
+                },
+                {
+                    "description": "Most Recent Poster",
+                    "extras": "latest",
+                    "user": {
+                        "avatar_template": "/letter_avatar/ltrager/{size}/5_6d6f4cde2641c35611d5cac2fb97c77e.png",
+                        "id": 16,
+                        "name": "Lee Trager",
+                        "username": "ltrager"
+                    }
+                }
+            ],
+            "posts_count": 2,
+            "reply_count": 0,
+            "slug": "maas-2-8-edge-modifying-uuid-reported-by-enlisting-node",
+            "tags": [],
+            "title": "MAAS 2.8/edge - modifying UUID reported by enlisting node",
+            "unpinned": null,
+            "unseen": true,
+            "views": 9,
+            "visible": true
+        },
+        {
+            "archetype": "regular",
+            "archived": false,
+            "bookmarked": false,
+            "bumped": true,
+            "bumped_at": "2020-07-21T19:29:14.921Z",
+            "can_have_answer": true,
+            "category_id": 5,
+            "closed": false,
+            "created_at": "2020-02-21T20:48:33.933Z",
+            "fancy_title": "&ldquo;Give me an example of MAAS&rdquo;",
+            "featured_link": null,
+            "has_accepted_answer": false,
+            "highest_post_number": 1,
+            "id": 1314,
+            "image_url": "https://discourse.maas.io/uploads/default/optimized/1X/18456dbd3fbfec14eddd044816fd0719692282da_2_690x406.jpeg",
+            "last_posted_at": "2020-02-21T20:48:34.139Z",
+            "last_read_post_number": 1,
+            "like_count": 0,
+            "liked": false,
+            "new_posts": 0,
+            "notification_level": 3,
+            "pinned": false,
+            "posters": [
+                {
+                    "description": "Original Poster, Most Recent Poster",
+                    "extras": "latest single",
+                    "user": {
+                        "avatar_template": "/letter_avatar/billwear/{size}/5_6d6f4cde2641c35611d5cac2fb97c77e.png",
+                        "id": 287,
+                        "name": "Bill Wear",
+                        "username": "billwear"
+                    }
+                }
+            ],
+            "posts_count": 1,
+            "reply_count": 0,
+            "slug": "give-me-an-example-of-maas",
+            "tags": [],
+            "title": "\"Give me an example of MAAS\"",
+            "unpinned": null,
+            "unread": 0,
+            "unseen": false,
+            "views": 1506,
+            "visible": true
+        },
+        {
+            "archetype": "regular",
+            "archived": false,
+            "bookmarked": false,
+            "bumped": true,
+            "bumped_at": "2020-07-21T19:30:25.400Z",
+            "can_have_answer": true,
+            "category_id": 5,
+            "closed": false,
+            "created_at": "2020-05-06T20:11:32.265Z",
+            "fancy_title": "VM host networking",
+            "featured_link": null,
+            "has_accepted_answer": false,
+            "highest_post_number": 1,
+            "id": 1526,
+            "image_url": "https://discourse.maas.io/uploads/default/optimized/1X/29624d737106c5bad777aee9d2c8cad9c3de7151_2_690x391.jpeg",
+            "last_posted_at": "2020-05-06T20:11:32.419Z",
+            "last_read_post_number": 1,
+            "like_count": 0,
+            "liked": false,
+            "new_posts": 0,
+            "notification_level": 3,
+            "pinned": false,
+            "posters": [
+                {
+                    "description": "Original Poster, Most Recent Poster",
+                    "extras": "latest single",
+                    "user": {
+                        "avatar_template": "/letter_avatar/billwear/{size}/5_6d6f4cde2641c35611d5cac2fb97c77e.png",
+                        "id": 287,
+                        "name": "Bill Wear",
+                        "username": "billwear"
+                    }
+                }
+            ],
+            "posts_count": 1,
+            "reply_count": 0,
+            "slug": "vm-host-networking",
+            "tags": [],
+            "title": "VM host networking",
+            "unpinned": null,
+            "unread": 0,
+            "unseen": false,
+            "views": 560,
+            "visible": true
+        },
+        {
+            "archetype": "regular",
+            "archived": false,
+            "bookmarked": false,
+            "bumped": true,
+            "bumped_at": "2020-02-18T15:37:43.370Z",
+            "can_have_answer": true,
+            "category_id": 5,
+            "closed": false,
+            "created_at": "2020-02-18T15:37:43.203Z",
+            "fancy_title": "What&rsquo;s new in MAAS 2.7",
+            "featured_link": null,
+            "has_accepted_answer": false,
+            "highest_post_number": 1,
+            "id": 1306,
+            "image_url": null,
+            "last_posted_at": "2020-02-18T15:37:43.370Z",
+            "last_read_post_number": 1,
+            "like_count": 0,
+            "liked": false,
+            "new_posts": 0,
+            "notification_level": 3,
+            "pinned": false,
+            "posters": [
+                {
+                    "description": "Original Poster, Most Recent Poster",
+                    "extras": "latest single",
+                    "user": {
+                        "avatar_template": "/letter_avatar/billwear/{size}/5_6d6f4cde2641c35611d5cac2fb97c77e.png",
+                        "id": 287,
+                        "name": "Bill Wear",
+                        "username": "billwear"
+                    }
+                }
+            ],
+            "posts_count": 1,
+            "reply_count": 0,
+            "slug": "whats-new-in-maas-2-7",
+            "tags": [],
+            "title": "What's new in MAAS 2.7",
+            "unpinned": null,
+            "unread": 0,
+            "unseen": false,
+            "views": 1435,
+            "visible": true
+        }
+    ],
+    "tags": [
+        "not-rad"
+    ],
+    "timeline_lookup": [
+        [
+            1,
+            401
+        ]
+    ],
+    "title": "RSD storage",
+    "topic_timer": null,
+    "unpinned": null,
+    "user_id": -1,
+    "views": 1187,
+    "visible": true,
+    "word_count": 97
+}
