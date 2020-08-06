@@ -2,6 +2,8 @@
 
 import sys, subprocess, json, os, time, re, markdown, jinja2
 from shutil import copyfile
+import shutil
+import requests
 from yaml import load, dump
 
 try:
@@ -545,10 +547,19 @@ def dc2html(tag, files):
             if not os.path.isdir("./images"):
                 os.mkdir("images")
             match = re.findall(r".*png", md)
-            for item in match:
-                image.append(item.split("/")[1])
-            sys.exit()
+            match2 = re.findall(r".*jpeg", md)
+            rawimagelines = match + match2
+            images = []
+            for x in rawimagelines:
+                images.append(x.split("(")[1])
+            for x in images:
+                filename = "images/" + x.split("/")[-1]
+                r = requests.get(x, stream=True)
+                r.raw.decode_content = True
+                with open(filename, "wb") as f:
+                    shutil.copyfileobj(r.raw, f)
 
+            sys.exit()
             # convert the corrected markdown to html
             extensions = {"extra", "smarty"}
             html = markdown.markdown(md, extensions=extensions, output_format="html5")
