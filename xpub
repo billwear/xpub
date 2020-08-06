@@ -508,19 +508,7 @@ def dc2html(tag, files):
             md = mdfile.read()
             mdfile.close()
 
-            # tag out some unrecognized html during the conversion
-            md = (
-                md.replace("<details>", "zorkD")
-                .replace("<summary>", "zorkS")
-                .replace("</details>", "zorkDC")
-                .replace("</summary>", "zorkSC")
-            )
-
-            # switch in conditional sections based on tags
-            if tag:
-                md = re.sub("<!--[ ]*" + str(tag) + "[ ]*\n", "", md)
-                md = re.sub("[ ]*" + str(tag) + "[ ]*-->[ ]*\n", "", md)
-
+            # fix up a nice HTML title
             basename = str(os.path.splitext(mdfilename)[0])
             page_title = basename
             page_title = page_title.replace("maas", "MAAS")
@@ -544,35 +532,87 @@ def dc2html(tag, files):
             md = re.sub(r"/t/([a-z0-9-]*)/([0-9]*)", r"\1-\2.html", md)
 
             # retrieve the images in the file and store them in "./images"
+            # correcting sizing and resolution negligence atw
+
+            ## create the images subdir if it's not there
             if not os.path.isdir("./images"):
                 os.mkdir("images")
+
+            ## pull out all the png and jpeg refs in the file
             match = re.findall(r".*png", md)
             match2 = re.findall(r".*jpeg", md)
-            rawimagelines = match + match2
-            images = []
-            for x in rawimagelines:
-                images.append(x.split("(")[1])
-                print(x)
-            sys.exit()
-            for x in images:
-                filename = "images/" + x.split("/")[-1]
-                r = requests.get(x, stream=True)
+            imagelines = match + match2
+
+            ## capture image file names and properties
+            for x in imagelines:
+                img_url = x.split("(")[1]
+                img_tag = x.split("]")[0].split("[")[1]
+                img_fnam = "./images/" + x.split("/")[-1]
+                try:
+                    img_alt_text = img_tag.split("|")[0]
+                except:
+                    img_alt_text = img_tag
+                img_props = str(subprocess.check_output(
+                    ["file", img_fnam]
+                ))
+                img_awidth = re.search(
+                    ",[ ]*[0-9]*[]*x[ ]*[0-9]*[ ]*,",
+                    img_props
+                ).group().split(",")[1].split("x")[0]
+                img_aheight = re.search(
+                    ",[ ]*[0-9]*[]*x[ ]*[0-9]*[ ]*,",
+                    img_props
+                ).group().split(",")[1].split("x")[1]
+
+                ## correct image dim to standard width
+                corr_width = 690
+                corr_height = int(float(img_awidth)
+                                  / 690.0 * float(img_aheight))
+
+                ## download the images and store them locally
+                r = requests.get(img_url, stream=True)
                 r.raw.decode_content = True
-                with open(filename, "wb") as f:
+                with open(img_fnam, "wb") as f:
                     shutil.copyfileobj(r.raw, f)
 
-            sys.exit()
+                ## re-do the image line with correct / actual dims
+                ## (aspect ratio turned off for now, it's buggy)
+                repl_img_line = "<img alt="+ img_alt_text + '" '
+                repl_img_line += 'width="870" '
+#                repl_img_line += 'height="' + str(corr_height) + '" '
+                repl_img_line += 'src="' + img_url + '">'
+
+                ## replace the image line in the markdown
+                md = md.replace(x, repl_img_line)
+
+            # tag out some unrecognized html during the conversion
+            md = (
+                md.replace("<details>", "zorkD")
+                .replace("<summary>", "zorkS")
+                .replace("</details>", "zorkDC")
+                .replace("</summary>", "zorkSC")
+            )
+
+            # switch in conditional sections based on tags
+            if tag:
+                md = re.sub("<!--[ ]*" + str(tag) + "[ ]*\n", "", md)
+                md = re.sub("[ ]*" + str(tag) + "[ ]*-->[ ]*\n", "", md)
+
             # convert the corrected markdown to html
             extensions = {"extra", "smarty"}
-            html = markdown.markdown(md, extensions=extensions, output_format="html5")
+            html = markdown.markdown(
+                md,
+                extensions=extensions,
+                output_format="html5"
+            )
             html = "<h1>" + page_title + "</h1>" + html
 
             # tag back in the unrecognized html during the conversion
             html = (
-                html.replace("zorkD", "<details>")
-                .replace("zorkS", "<summary>")
-                .replace("zorkDC", "</details>")
+                html.replace("zorkDC", "</details>")
                 .replace("zorkSC", "</summary>")
+                .replace("zorkD", "<details>")
+                .replace("zorkS", "<summary>")
             )
             htmlf = open(html_filename, "w")
             try:
