@@ -552,6 +552,8 @@ def dc2html(tag, files):
             images = []
             for x in rawimagelines:
                 images.append(x.split("(")[1])
+                print(x)
+            sys.exit()
             for x in images:
                 filename = "images/" + x.split("/")[-1]
                 r = requests.get(x, stream=True)
