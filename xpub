@@ -2,6 +2,8 @@
 
 import sys, subprocess, json, os, time, re, markdown, jinja2
 from shutil import copyfile
+import shutil
+import requests
 from yaml import load, dump
 
 try:
@@ -118,8 +120,9 @@ def discourse(filename, title, category):
 @click.argument("start", type=click.INT)
 @click.argument("end", type=click.INT)
 @click.option("-c", "category", default=-1, help="limit pull to a specific category")
+@click.option("-b", "banned_tag", help="ban a discourse tag from being pulled")
 @click.option("-j", is_flag=True, help="save intermediate JSON to local files")
-def discourse(start, end, category, j):
+def discourse(start, end, category, j, banned_tag):
     """Pulls a range of topics from discourse to the CWD
     
     Does not pull deleted topics.  Can be limited to a discourse category.
@@ -179,12 +182,15 @@ def discourse(start, end, category, j):
         # if requested, save the intermediate topic json to a file
         if j == True:
             f2 = open("topic-" + str(tn) + ".json", "w")
-            f2.write(str(topic_json))
+            f2.write(json.dumps(topic_json, sort_keys=True, indent=4))
             f2.close()
 
         # extract the post ID from the topic json
         post_id = topic_json["post_stream"]["posts"][0]["id"]
         category_id = topic_json["category_id"]
+        tags = topic_json["tags"]
+        if banned_tag in tags:
+            continue
         if category != -1:
             if (category_id is None) or (category_id != category):
                 continue
@@ -224,7 +230,7 @@ def discourse(start, end, category, j):
         # if requested, write the intermediate post json to a file
         if j == True:
             f2 = open("post-" + str(tn) + ".json", "w")
-            f2.write(str(post_json))
+            f2.write(json.dumps(post_json, sort_keys=True, indent=4))
             f2.close()
 
         # extract the article markdown from the json output
@@ -346,6 +352,7 @@ def discourse(tag, files):
         post_id = topic_json["post_stream"]["posts"][0]["id"]
         category_id = topic_json["category_id"]
         deleted_at = topic_json["deleted_at"]
+        tags = topic_json["tags"]
         if deleted_at:
             print("post deleted: not pushed from discourse")
             sys.exit()
@@ -496,25 +503,23 @@ def dc2html(tag, files):
     for mdfilename in files:
         if mdfilename.endswith(".md"):
 
-            # clean up the html peculiarities
-            copyfile(mdfilename, "mdc.tmp")
-            os.system("sed -i 's/<details>/zorkD/g' mdc.tmp")
-            os.system("sed -i 's/<summary>/zorkS/g' mdc.tmp")
-            os.system("sed -i 's/<\/details>/zorkDC/g' mdc.tmp")
-            os.system("sed -i 's/<\/summary>/zorkSC/g' mdc.tmp")
-            filename = "mdc.tmp"
+            # read in the markdown file
+            mdfile = open(mdfilename, "r")
+            md = mdfile.read()
+            mdfile.close()
+
+            # tag out some unrecognized html during the conversion
+            md = (
+                md.replace("<details>", "zorkD")
+                .replace("<summary>", "zorkS")
+                .replace("</details>", "zorkDC")
+                .replace("</summary>", "zorkSC")
+            )
 
             # switch in conditional sections based on tags
             if tag:
-                condfile = "cond_mdc.tmp"
-                grepcli = 'grep -v "<!--[ ]*' + str(tag) + '" '
-                grepcli += "mdc.tmp | grep -v "
-                grepcli += '"' + str(tag) + '[ ]*-->" > '
-                grepcli += condfile
-                os.system(grepcli)
-                copyfile(condfile, "tmp.md")
-                filename = "tmp.md"
-                os.remove(condfile)
+                md = re.sub("<!--[ ]*" + str(tag) + "[ ]*\n", "", md)
+                md = re.sub("[ ]*" + str(tag) + "[ ]*-->[ ]*\n", "", md)
 
             basename = str(os.path.splitext(mdfilename)[0])
             page_title = basename
@@ -532,18 +537,41 @@ def dc2html(tag, files):
             page_title = page_title.replace("-", " ")
             page_title = page_title[0].upper() + page_title[1:]
             html_filename = basename + ".html"
-            mdf = open(filename, "r")
-            md = mdf.read()
 
             # correct majority of the links
-            cmd2 = re.sub(r"https://discourse.maas.io/t", "/t", md)
-            cmd1 = re.sub(r"/t/([a-z0-9-]*)/([0-9]*)#", r"\1-\2.html#", cmd2)
-            cmd = re.sub(r"/t/([a-z0-9-]*)/([0-9]*)", r"\1-\2.html", cmd1)
+            md = re.sub(r"https://discourse.maas.io/t", "/t", md)
+            md = re.sub(r"/t/([a-z0-9-]*)/([0-9]*)#", r"\1-\2.html#", md)
+            md = re.sub(r"/t/([a-z0-9-]*)/([0-9]*)", r"\1-\2.html", md)
 
+            # retrieve the images in the file and store them in "./images"
+            if not os.path.isdir("./images"):
+                os.mkdir("images")
+            match = re.findall(r".*png", md)
+            match2 = re.findall(r".*jpeg", md)
+            rawimagelines = match + match2
+            images = []
+            for x in rawimagelines:
+                images.append(x.split("(")[1])
+            for x in images:
+                filename = "images/" + x.split("/")[-1]
+                r = requests.get(x, stream=True)
+                r.raw.decode_content = True
+                with open(filename, "wb") as f:
+                    shutil.copyfileobj(r.raw, f)
+
+            sys.exit()
             # convert the corrected markdown to html
             extensions = {"extra", "smarty"}
-            html = markdown.markdown(cmd, extensions=extensions, output_format="html5")
+            html = markdown.markdown(md, extensions=extensions, output_format="html5")
             html = "<h1>" + page_title + "</h1>" + html
+
+            # tag back in the unrecognized html during the conversion
+            html = (
+                html.replace("zorkD", "<details>")
+                .replace("zorkS", "<summary>")
+                .replace("zorkDC", "</details>")
+                .replace("zorkSC", "</summary>")
+            )
             htmlf = open(html_filename, "w")
             try:
                 template_file = open("template.html", "r")
@@ -562,10 +590,6 @@ def dc2html(tag, files):
             doc = jinja2.Template(TEMPLATE).render(content=html)
             htmlf.write(doc)
             htmlf.close()
-            os.system("sed -i 's/zorkDC/<\/details>/g' " + html_filename)
-            os.system("sed -i 's/zorkSC/<\/summary>/g' " + html_filename)
-            os.system("sed -i 's/zorkD/<details>/g' " + html_filename)
-            os.system("sed -i 's/zorkS/<summary>/g' " + html_filename)
 
 
 if __name__ == "__main__":
