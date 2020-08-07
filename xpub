@@ -583,7 +583,7 @@ def dc2html(tag, files):
                 ## re-do the image line with correct / actual dims
                 ## (aspect ratio turned off for now, it's buggy)
                 repl_img_line = "<img alt="+ img_alt_text + '" '
-                repl_img_line += 'width="870" '
+                repl_img_line += 'width="690" '
 #                repl_img_line += 'height="' + str(corr_height) + '" '
                 repl_img_line += 'src="' + img_url + '">'
 
