@@ -188,8 +188,11 @@ def discourse(start, end, category, j, banned_tag):
         # extract the post ID from the topic json
         post_id = topic_json["post_stream"]["posts"][0]["id"]
         category_id = topic_json["category_id"]
-        tags = topic_json["tags"]
-        if banned_tag in tags:
+        try:
+            tags = topic_json["tags"]
+            if banned_tag in tags:
+                continue
+        except:
             continue
         if category != -1:
             if (category_id is None) or (category_id != category):
@@ -539,19 +542,26 @@ def dc2html(tag, files):
                 os.mkdir("images")
 
             ## pull out all the png and jpeg refs in the file
-            match = re.findall(r".*png", md)
-            match2 = re.findall(r".*jpeg", md)
+            match = re.findall(r".*png[)]+", md)
+            match2 = re.findall(r".*jpeg[)]+", md)
             imagelines = match + match2
 
             ## capture image file names and properties
             for x in imagelines:
-                img_url = x.split("(")[1]
+                img_url = x.split("(")[1].split(")")[0]
                 img_tag = x.split("]")[0].split("[")[1]
-                img_fnam = "./images/" + x.split("/")[-1]
+                img_fnam = "./images/" + x.split("/")[-1].split(")")[0]
                 try:
                     img_alt_text = img_tag.split("|")[0]
                 except:
                     img_alt_text = img_tag
+
+                ## download the images and store them locally
+                r = requests.get(img_url, stream=True)
+                r.raw.decode_content = True
+                with open(img_fnam, "wb") as f:
+                    shutil.copyfileobj(r.raw, f)
+
                 img_props = str(subprocess.check_output(
                     ["file", img_fnam]
                 ))
@@ -569,11 +579,6 @@ def dc2html(tag, files):
                 corr_height = int(float(img_awidth)
                                   / 690.0 * float(img_aheight))
 
-                ## download the images and store them locally
-                r = requests.get(img_url, stream=True)
-                r.raw.decode_content = True
-                with open(img_fnam, "wb") as f:
-                    shutil.copyfileobj(r.raw, f)
 
                 ## re-do the image line with correct / actual dims
                 ## (aspect ratio turned off for now, it's buggy)
