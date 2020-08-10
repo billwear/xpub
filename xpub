@@ -551,7 +551,10 @@ def dc2html(tag, files):
                 img_url = x.split("(")[1].split(")")[0]
                 img_tag = x.split("]")[0].split("[")[1]
                 img_fnam = "./images/" + x.split("/")[-1].split(")")[0]
+<<<<<<< HEAD
                 img_link = "images/" + xsplit("/")[-1].split(")")[0]
+=======
+>>>>>>> 60ba7b9cad0a52175126f37128c7cc74d783b4ce
                 try:
                     img_alt_text = img_tag.split("|")[0]
                 except:
@@ -563,6 +566,7 @@ def dc2html(tag, files):
                 with open(img_fnam, "wb") as f:
                     shutil.copyfileobj(r.raw, f)
 
+<<<<<<< HEAD
                 img_props = str(subprocess.check_output(["file", img_fnam]))
                 img_awidth = (
                     re.search(",[ ]*[0-9]*[]*x[ ]*[0-9]*[ ]*,", img_props)
@@ -587,6 +591,32 @@ def dc2html(tag, files):
                 repl_img_line += 'width="690" '
                 #                repl_img_line += 'height="' + str(corr_height) + '" '
                 repl_img_line += 'src="' + img_link + '">'
+=======
+                img_props = str(subprocess.check_output(
+                    ["file", img_fnam]
+                ))
+                img_awidth = re.search(
+                    ",[ ]*[0-9]*[]*x[ ]*[0-9]*[ ]*,",
+                    img_props
+                ).group().split(",")[1].split("x")[0]
+                img_aheight = re.search(
+                    ",[ ]*[0-9]*[]*x[ ]*[0-9]*[ ]*,",
+                    img_props
+                ).group().split(",")[1].split("x")[1]
+
+                ## correct image dim to standard width
+                corr_width = 690
+                corr_height = int(float(img_awidth)
+                                  / 690.0 * float(img_aheight))
+
+
+                ## re-do the image line with correct / actual dims
+                ## (aspect ratio turned off for now, it's buggy)
+                repl_img_line = "<img alt="+ img_alt_text + '" '
+                repl_img_line += 'width="690" '
+#                repl_img_line += 'height="' + str(corr_height) + '" '
+                repl_img_line += 'src="' + img_url + '">'
+>>>>>>> 60ba7b9cad0a52175126f37128c7cc74d783b4ce
 
                 ## replace the image line in the markdown
                 md = md.replace(x, repl_img_line)
@@ -606,7 +636,11 @@ def dc2html(tag, files):
 
             # convert the corrected markdown to html
             extensions = {"extra", "smarty"}
-            html = markdown.markdown(md, extensions=extensions, output_format="html5")
+            html = markdown.markdown(
+                md,
+                extensions=extensions,
+                output_format="html5"
+            )
             html = "<h1>" + page_title + "</h1>" + html
 
             # tag back in the unrecognized html during the conversion
