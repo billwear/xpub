@@ -551,7 +551,7 @@ def dc2html(tag, files):
                 img_url = x.split("(")[1].split(")")[0]
                 img_tag = x.split("]")[0].split("[")[1]
                 img_fnam = "./images/" + x.split("/")[-1].split(")")[0]
-                img_link = "images/" + xsplit("/")[-1].split(")")[0]
+                img_link = "images/" + x.split("/")[-1].split(")")[0]
                 try:
                     img_alt_text = img_tag.split("|")[0]
                 except:
