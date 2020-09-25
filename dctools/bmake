@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+
+import glob, sys
+
+deplist = []
+makelist = []
+for name in glob.glob('*.md'):
+    basename = name.split(".")[0]
+    makestanza = []
+    i = False
+    for target in glob.glob('originals/'+basename+'*'):
+        deplist.append(target)
+        splitter = name.split(".")[0]
+        diff = target.split(splitter)[1].split(".")[0]
+        topicno = diff.split("-")[-1]
+        tag = diff.split(topicno)[0].strip("-")
+        target_base = target.split("/")[1]
+        if i == False:
+            makestanza.append(target + ": " + name)
+            makestanza.append("\tchmod 644 originals/*")
+            i = True 
+        makestanza.append("\tcp " + name + " " + target_base)
+        makestanza.append("\txpub push discourse -t " + tag + " " + target_base)
+        makestanza.append("\txpub pull discourse " + topicno + " " + topicno)
+        makestanza.append("\tcp -p " + target_base + " originals")
+        makestanza.append("\trm " + target_base)
+                      
+    makestanza.append("\tchmod 444 originals/*")
+    makelist.append(makestanza)
+
+for i in range(0, len(deplist)):
+    if i == 0:
+        print("TARGET_DEPS := " + deplist[i])
+    else:
+        print("TARGET_DEPS += " + deplist[i])
+
+print(" ")
+print("all: $(TARGET_DEPS)")
+print(".PHONY: all")
+print(" ")
+            
+for x in makelist:
+    for y in x:
+        print(y)
+    print(" ")
+        
+

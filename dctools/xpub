@@ -1,0 +1,734 @@
+#!/usr/bin/python3
+
+import sys, subprocess, json, os, time, re, markdown, jinja2
+from shutil import copyfile
+import shutil
+import requests
+from yaml import load, dump
+
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    from yaml import Loader, Dumper
+
+import click
+
+
+@click.group(help="Publish and convert files")
+def xpub():
+    pass
+
+
+@xpub.group(help="Push files to a directory or repository")
+def push():
+    pass
+
+
+@xpub.group(help="Convert files in the working directory")
+def convert():
+    pass
+
+
+@xpub.group(help="Pull files from a directory or repository")
+def pull():
+    pass
+
+
+@xpub.group(help="Add a new file to a directory or repository")
+def add():
+    pass
+
+
+@add.command()
+@click.argument("filename")
+@click.argument("title")
+@click.argument("category")
+def discourse(filename, title, category):
+    """Adds a new topic to discourse with content from a local file
+    
+    Must specify a category and a title for the article. The title 
+    cannot be a duplicate of another title, or the add will fail.
+
+    Filenames do not matter for this operation.
+
+    You must have URL and auth data in a file called "/etc/dc.yaml" -- see the
+    example file in github for details.
+    """
+
+    # read config file to get api-key, api-usr, and discourse url
+    try:
+        cfile = open("/etc/dc.yaml", "r")
+    except:
+        print('xpub: cannot open "/etc/dc.yaml"')
+        print("xpub: exiting")
+        sys.exit(4)
+    config_data = load(cfile, Loader=Loader)
+    cfile.close()
+
+    # load and convert the specified markdown file
+    f = open(filename, "r")
+    markdown = f.read()
+
+    # pad the markdown to 9000 chars to avoid discourse bug
+    outstr = markdown.ljust(9000)
+
+    # create a dictionary buffer for the markdown
+    data = {}
+
+    # place the markdown in the appropriate json keys
+    data["title"] = title
+    data["category"] = category
+    data["raw"] = outstr
+
+    # open a temporary json file to store the markdown as json
+    f = open("foo.json", "w")
+
+    # convert the markdown to json and store it in the temp file
+    f.write(json.dumps(data))
+
+    # close the temp file for completeness
+    f.close()
+
+    # set the url and auth data as read from the yaml config file
+    url = config_data["base_url"] + "/posts.json"
+    apikey = "Api-Key: " + config_data["api_key"]
+    apiusername = "Api-Username: " + config_data["api_username"]
+
+    # use the curl command to re-post the markdown into discourse
+    response = subprocess.check_output(
+        [
+            "curl",
+            "-X",
+            "POST",
+            url,
+            "-H",
+            apikey,
+            "-H",
+            apiusername,
+            "-H",
+            "Content-Type: application/json",
+            "-d",
+            "@foo.json",
+        ]
+    )
+
+    # remove the temporary files
+    os.remove("foo.json")
+
+
+@pull.command(help="Pull files from a discourse forum to the working directory")
+@click.argument("start", type=click.INT)
+@click.argument("end", type=click.INT)
+@click.option("-c", "category", default=-1, help="limit pull to a specific category")
+@click.option("-b", "banned_tag", help="ban a discourse tag from being pulled")
+@click.option("-j", is_flag=True, help="save intermediate JSON to local files")
+def discourse(start, end, category, j, banned_tag):
+    """Pulls a range of topics from discourse to the CWD
+    
+    Does not pull deleted topics.  Can be limited to a discourse category.
+    Can be asked to leave intermediate JSON output in the CWD as well.
+
+    Files are named "<topic-slug>-tnum.md",
+    where "tnum" is the topic number and "<topic-slug>" is the discourse-assigned,
+    compressed title slug created when a new topic is set.  For example, 
+    "About MAAS" (topic 840) is stored in file "about-maas-840.md".
+
+    You must have URL and auth data in a file called "/etc/dc.yaml" -- see the
+    example file in github for details.
+    """
+
+    # read config file to get api-key, api-usr, and discourse url
+    try:
+        cfile = open("/etc/dc.yaml", "r")
+    except:
+        print('xpub: unable to find config file "/etc/dc.yaml"')
+        print("xpub: exiting")
+        sys.exit(4)
+    config_data = load(cfile, Loader=Loader)
+    cfile.close()
+
+    # giant for loop to get the topic range specified
+    for tn in range(start, end + 1):
+
+        # sleep for 2.5 seconds - prevents discourse DDOS rejection
+        time.sleep(2.5)
+
+        # run the shell command to get the topic and retain the result
+        proc = subprocess.Popen(
+            [
+                "curl",
+                "-X",
+                "GET",
+                "-H",
+                "Api-Key: " + config_data["api_key"],
+                "-H",
+                "Api-Username: " + config_data["api_username"],
+                "-H",
+                "Content-Type: application/json",
+                config_data["base_url"] + "/t/{" + str(tn) + "}.json",
+            ],
+            stdout=subprocess.PIPE,
+        )
+
+        # read the result into a usable buffer
+        output = proc.stdout.read()
+
+        # convert the result to json; if it fails, skip this record
+        try:
+            topic_json = json.loads(output)
+        except:
+            continue
+
+        # if requested, save the intermediate topic json to a file
+        if j == True:
+            f2 = open("topic-" + str(tn) + ".json", "w")
+            f2.write(json.dumps(topic_json, sort_keys=True, indent=4))
+            f2.close()
+
+        # extract the post ID from the topic json
+        post_id = topic_json["post_stream"]["posts"][0]["id"]
+
+        # extract the last updated time from the topic json, because we'll
+        # set the file's modification time to this value
+        updated_at = topic_json["post_stream"]["posts"][0]["updated_at"]
+        print(updated_at)
+        sys.exit()
+
+        # extract the category ID from the topic json (for potential match)
+        category_id = topic_json["category_id"]
+
+        # extract tags, if there are any, and check for a banned tag
+        try:
+            tags = topic_json["tags"]
+            if banned_tag in tags:
+                continue
+        except:
+            continue
+
+        # check the category, if requested, and screen out non-matching posts
+        if category != -1:
+            if (category_id is None) or (category_id != category):
+                continue
+
+        # compute the filename
+        filename = (
+            topic_json["post_stream"]["posts"][0]["topic_slug"] + "-" + str(tn) + ".md"
+        )
+        deleted_at = topic_json["deleted_at"]
+        if deleted_at:
+            print("post deleted: not pulled from discourse")
+            continue
+
+        # read the post using the api, retaining the return value
+        proc2 = subprocess.Popen(
+            [
+                "curl",
+                "-X",
+                "GET",
+                "-H",
+                "Api-Key: " + config_data["api_key"],
+                "-H",
+                "Api-Username: " + config_data["api_username"],
+                "-H",
+                "Content-Type: application/json",
+                config_data["base_url"] + "/posts/{" + str(post_id) + "}.json",
+            ],
+            stdout=subprocess.PIPE,
+        )
+
+        # copy the return value to a suitable buffer
+        output2 = proc2.stdout.read()
+
+        # convert the returned post to json
+        post_json = json.loads(output2)
+
+        # if requested, write the intermediate post json to a file
+        if j == True:
+            f2 = open("post-" + str(tn) + ".json", "w")
+            f2.write(json.dumps(post_json, sort_keys=True, indent=4))
+            f2.close()
+
+        # extract the article markdown from the json output
+        raw = post_json["raw"]
+
+        # write the article markdown to the specified file
+        f = open(filename, "w")
+        f.write(str(raw))
+        f.close()
+
+
+@pull.command(help="Pull files from a github repo to the working directory")
+def github():
+    response = subprocess.check_output(["git", "fetch"])
+    response = subprocess.check_output(["git", "checkout", "origin/master", "--", "."])
+
+
+@pull.command(help="Pull files from another directory to the working directory")
+def dir():
+    pass
+
+
+@push.command()
+@click.option("-t", "tag", help="document tag to control output")
+@click.argument("files", nargs=-1)
+def discourse(tag, files):
+    """Push files to a discourse forum from the CWD
+
+    Files must represent topics that already exist, and should be named
+    "<anything-you-want>-tnum.md", where "tnum" is the topic number. 
+    Nothing other than the "tnum" affects anything about the pushed topic.
+    You may specify files with wildcards, if desired.
+
+    Tags are markers that turn on commented-out sections of the markdown,
+    so that you can create different versions of the topic.  To add a tag,
+    simply place a comment before the paragraph you wish to make conditional,
+    like this: "<!-- keyword" and place a corresponding comment marker after
+    the paragraph, like this: "keyword -->".  Enter a tag keyword, exactly
+    as specified, when you invoke this command.  
+
+    Only one tag per push.  This may seem like a limitation, but if you are 
+    using mutliple dimensions (like CLI vs. UI, and version 2 vs. version 3, 
+    you'll quickly discover that nested tags don't work well for writing.  
+    Instead, try tags like "v2-cli" or "v3-ui".
+
+    You must have URL and auth data in a file called "/etc/dc.yaml" -- see the
+    example file in github for details.
+    """
+
+    directory = "."
+    topic = 0
+
+    # read config file to get api-key, api-usr, and discourse url
+    try:
+        cfile = open("/etc/dc.yaml", "r")
+    except:
+        print('xpub: couldn\'t open config file "/etc/dc.yaml"')
+        print("xpub: exiting")
+        sys.exit(4)
+    config_data = load(cfile, Loader=Loader)
+    cfile.close()
+
+    for mdfilename in files:
+
+        print("pushing ", mdfilename)
+
+        # get the topic number from the filename
+        if mdfilename.endswith(".md"):
+            flist = mdfilename.split("-")
+            fl2 = flist[-1].split(".")
+            if fl2[0].isnumeric():
+                topic = int(fl2[0])
+            else:
+                continue
+        else:
+            continue
+
+        filename = mdfilename
+
+        # switch in conditional sections based on tags
+        if tag:
+            condfile = "cond_" + filename
+            grepcli = 'grep -v "<!--[ ]*' + str(tag) + '" '
+            grepcli += filename + " | grep -v "
+            grepcli += '"' + str(tag) + '[ ]*-->" > '
+            grepcli += condfile
+            os.system(grepcli)
+            cpcli = "cp " + condfile + " tmp.md"
+            os.system(cpcli)
+            filename = "tmp.md"
+            os.system("rm " + condfile)
+
+        # run the shell command to get the topic and retain the result
+        proc = subprocess.Popen(
+            [
+                "curl",
+                "-X",
+                "GET",
+                "-H",
+                "Api-Key: " + config_data["api_key"],
+                "-H",
+                "Api-Username: " + config_data["api_username"],
+                "-H",
+                "Content-Type: application/json",
+                config_data["base_url"] + "/t/{" + str(topic) + "}.json",
+            ],
+            stdout=subprocess.PIPE,
+        )
+
+        # read the result into a usable buffer
+        output = proc.stdout.read()
+
+        # convert the result to json
+        try:
+            topic_json = json.loads(output)
+        except:
+            print("topic " + str(topic) + " doesn't exist; exiting")
+            sys.exit(4)
+
+        # extract the post ID from the topic json
+        post_id = topic_json["post_stream"]["posts"][0]["id"]
+        category_id = topic_json["category_id"]
+        deleted_at = topic_json["deleted_at"]
+        tags = topic_json["tags"]
+        if deleted_at:
+            print("post deleted: not pushed from discourse")
+            sys.exit()
+
+        outfile_name = filename
+
+        # load and convert the specified markdown file
+        f = open(outfile_name, "r")
+        markdown = f.read()
+
+        # pad the markdown to 9000 chars to avoid discourse bug
+        outstr = markdown.ljust(9000)
+
+        # create a dictionary buffer for the markdown
+        data = {}
+
+        # place the markdown against a key called "raw" discourse)
+        data["raw"] = outstr
+
+        # open a temporary json file to store the markdown as json
+        f = open("foo.json", "w")
+
+        # convert the markdown to json and store it in the temp file
+        f.write(json.dumps(data))
+
+        # close the temp file for completeness
+        f.close()
+
+        # set the url and auth data as read from the yaml config file
+        url = config_data["base_url"] + "/posts/{" + str(post_id) + "}.json"
+        apikey = "Api-Key: " + config_data["api_key"]
+        apiusername = "Api-Username: " + config_data["api_username"]
+
+        # use the curl command to re-post the markdown into discourse
+        response = subprocess.check_output(
+            [
+                "curl",
+                "-X",
+                "PUT",
+                url,
+                "-H",
+                apikey,
+                "-H",
+                apiusername,
+                "-H",
+                "Content-Type: application/json",
+                "-d",
+                "@foo.json",
+            ]
+        )
+
+        # remove the temporary json file
+        os.remove("foo.json")
+
+
+@push.command(help="Push files to a github repo from the working directory")
+def github():
+    response = subprocess.check_output(["git", "add", "."])
+    try:
+        response = subprocess.check_output(["git", "commit", "-m", "bot-push"])
+    except:
+        print("up to date")
+        sys.exit()
+    response = subprocess.check_output(["git", "push"])
+
+
+@push.group(help="Push files from another directory to the working directory")
+def dir():
+    pass
+
+
+@convert.command()
+@click.argument("files", nargs=-1)
+def md2html(files):
+    """Convert markdown files to html
+
+    Filenames can contain wildcards.  HTML output is 
+    controlled by a template file called "template.html"
+    in the current working directory.  The simplest 
+    template file is just an HTML shell (<html><body>...)
+    with "{content}" placed wherever the converted 
+    markdown should appear.
+    """
+
+    for x in files:
+        basename = os.path.splitext(x)[0]
+        html_filename = basename + ".html"
+        copyfile(x, "mdc.tmp")
+        os.system("sed -i 's/<details>/zorkD/g' mdc.tmp")
+        os.system("sed -i 's/<summary>/zorkS/g' mdc.tmp")
+        os.system("sed -i 's/<\/details>/zorkDC/g' mdc.tmp")
+        os.system("sed -i 's/<\/summary>/zorkSC/g' mdc.tmp")
+        mdf = open("mdc.tmp", "r")
+        md = mdf.read()
+        extensions = {"extra", "smarty"}
+        html = markdown.markdown(md, extensions=extensions, output_format="html5")
+        htmlf = open(html_filename, "w")
+        try:
+            template_file = open("template.html", "r")
+            TEMPLATE = template_file.read()
+        except:
+            TEMPLATE = """<!DOCTYPE html>
+            <html>
+            <body>
+            <div class="container">
+            {{content}}
+            </div>
+            </body>
+            </html>
+            """
+        doc = jinja2.Template(TEMPLATE).render(content=html)
+        htmlf.write(doc)
+        htmlf.close()
+        os.system("sed -i 's/zorkDC/<\/details>/g' " + html_filename)
+        os.system("sed -i 's/zorkSC/<\/summary>/g' " + html_filename)
+        os.system("sed -i 's/zorkD/<details>/g' " + html_filename)
+        os.system("sed -i 's/zorkS/<summary>/g' " + html_filename)
+
+
+@convert.command()
+@click.argument("files", nargs=-1)
+@click.option("-t", "tag", help="document tag to control output")
+def dc2html(tag, files):
+    """Convert discourse markdown to HTML
+
+    Filenames can contain wildcards.
+
+    Output filenames are the same as the markdown file name,
+    but with an HTML extension.  Discourse-type link
+    references are fixed, where possible.  Embedded discourse
+    links to documents in the conversion set should be properly
+    converted to URLs and should work after the conversion, in
+    general -- but your mileage may vary!
+
+    Tags are markers that turn on commented-out sections of the markdown,
+    so that you can create different versions of the topic.  To add a tag,
+    simply place a comment before the paragraph you wish to make conditional,
+    like this: "<!-- keyword" and place a corresponding comment marker after
+    the paragraph, like this: "keyword -->".  Enter a tag keyword, exactly
+    as specified, when you invoke this command.  
+
+    Only one tag per push.  This may seem like a limitation, but if you are 
+    using mutliple dimensions (like CLI vs. UI, and version 2 vs. version 3, 
+    you'll quickly discover that nested tags don't work well for writing.  
+    Instead, try tags like "v2-cli" or "v3-ui".
+    """
+
+    for mdfilename in files:
+        if mdfilename.endswith(".md"):
+
+            # read in the markdown file
+            mdfile = open(mdfilename, "r")
+            md = mdfile.read()
+            mdfile.close()
+
+            # fix up a nice HTML title
+            basename = str(os.path.splitext(mdfilename)[0])
+            page_title = basename
+            page_title = page_title.replace("maas", "MAAS")
+            page_title = page_title.replace("api", "API")
+            page_title = page_title.replace("dhcp", "DHCP")
+            page_title = page_title.replace("stp", "STP")
+            page_title = page_title.replace("ntp", "NTP")
+            page_title = page_title.replace("cli", "CLI")
+            page_title = page_title.replace("vmfs", "VMFS")
+            page_title = page_title.replace("vm", "VM")
+            page_title = page_title.replace("CLIent", "client")
+            page_title = page_title.replace("tls", "TLS")
+            page_title = page_title.rstrip("-0123456789")
+            page_title = page_title.replace("-", " ")
+            page_title = page_title[0].upper() + page_title[1:]
+            html_filename = basename + ".html"
+
+            # correct majority of the links
+            md = re.sub(r"https://discourse.maas.io/t", "/t", md)
+            md = re.sub(r"/t/([a-z0-9-]*)/([0-9]*)#", r"\1-\2.html#", md)
+            md = re.sub(r"/t/([a-z0-9-]*)/([0-9]*)", r"\1-\2.html", md)
+
+            # retrieve the images in the file and store them in "./images"
+            # correcting sizing and resolution negligence atw
+
+            ## create the images subdir if it's not there
+            if not os.path.isdir("./images"):
+                os.mkdir("images")
+
+            ## pull out all the discourse png and jpeg refs in the file
+            match = re.findall(r".*png[)]+", md)
+            match2 = re.findall(r".*jpeg[)]+", md)
+            imagelines = match + match2
+
+            ## capture image file names and properties
+            for x in imagelines:
+                img_url = x.split("(")[1].split(")")[0]
+                img_tag = x.split("]")[0].split("[")[1]
+                img_fnam = "./images/" + x.split("/")[-1].split(")")[0]
+                img_link = "images/" + x.split("/")[-1].split(")")[0]
+                try:
+                    img_alt_text = img_tag.split("|")[0]
+                except:
+                    img_alt_text = img_tag
+
+                ## download the images and store them locally
+                r = requests.get(img_url, stream=True)
+                r.raw.decode_content = True
+                with open(img_fnam, "wb") as f:
+                    shutil.copyfileobj(r.raw, f)
+
+                img_props = str(subprocess.check_output(["file", img_fnam]))
+                img_awidth = (
+                    re.search(",[ ]*[0-9]*[]*x[ ]*[0-9]*[ ]*,", img_props)
+                    .group()
+                    .split(",")[1]
+                    .split("x")[0]
+                )
+                img_aheight = (
+                    re.search(",[ ]*[0-9]*[]*x[ ]*[0-9]*[ ]*,", img_props)
+                    .group()
+                    .split(",")[1]
+                    .split("x")[1]
+                )
+
+                ## correct image dim to standard width
+                corr_width = 690
+                corr_height = int(float(img_awidth) / 690.0 * float(img_aheight))
+
+                ## replace the image line with html
+                repl_img_line = '<a href="' + img_link + '" '
+                repl_img_line += 'target = "_blank">'
+                repl_img_line += "<img alt=" + img_alt_text + '" '
+                repl_img_line += 'src="' + img_link + '"></a>'
+
+                ## replace the image line in the markdown
+                md = md.replace(x, repl_img_line)
+
+            # tag out some unrecognized html during the conversion
+            md = (
+                md.replace("<details>", "zorkD")
+                .replace("<summary>", "zorkS")
+                .replace("</details>", "zorkDC")
+                .replace("</summary>", "zorkSC")
+            )
+
+            # switch in conditional sections based on tags
+            if tag:
+                md = re.sub("<!--[ ]*" + str(tag) + "[ ]*\n", "", md)
+                md = re.sub("[ ]*" + str(tag) + "[ ]*-->[ ]*\n", "", md)
+
+            # convert the corrected markdown to html
+            extensions = {"extra", "smarty"}
+            html = markdown.markdown(md, extensions=extensions, output_format="html5")
+            html = "<h1>" + page_title + "</h1>" + html
+
+            # tag back in the unrecognized html during the conversion
+            html = (
+                html.replace("zorkDC", "</details>")
+                .replace("zorkSC", "</summary>")
+                .replace("zorkD", "<details>")
+                .replace("zorkS", "<summary>")
+            )
+            htmlf = open(html_filename, "w")
+            try:
+                template_file = open("template.html", "r")
+                TEMPLATE = template_file.read()
+            except:
+                TEMPLATE = """<!DOCTYPE html>
+                <html>
+                <body>
+                <div class="container">
+                {{content}}
+                </div>
+                </body>
+                </html>
+                """
+
+            doc = jinja2.Template(TEMPLATE).render(content=html)
+            htmlf.write(doc)
+            htmlf.close()
+
+
+@convert.command()
+@click.argument("files", nargs=-1)
+def dcfiximgs(files):
+    """Make images clickable in discourse markdown files
+
+    Filenames can contain wildcards.
+
+    Output replaces the markdown input file. Images are made to be clickable and
+    re-formatted so they survive the discourse --> docs conversion as
+    processed.
+    """
+
+    for mdfilename in files:
+        if mdfilename.endswith(".md"):
+
+            # read in the markdown file
+            mdfile = open(mdfilename, "r")
+            md = mdfile.read()
+            mdfile.close()
+
+            # fix up a nice HTML title
+            basename = str(os.path.splitext(mdfilename)[0])
+
+            # retrieve the images and make them clickable if not
+
+            ## pull out all the png and jpeg refs in the file
+            match = re.findall(r".*png[)]+", md)
+            match2 = re.findall(r".*jpeg[)]+", md)
+            imagelines = match + match2
+            print("imagelines", imagelines)
+            ## capture image URL and properties
+            for x in imagelines:
+                print("before", x)
+                # replace optimized images with original images
+                if "http" in x:
+                    if "optimized" in x:
+                        y = x
+                        y.replace("optimized", "original")
+                        ext = y.split(".")[1]
+                        baseurl = y.split("_2_")[0]
+                        newurl = baseurl + ext
+                        repl_img_line = baseurl + "." + ext
+                    else:
+                        repl_img_line = x
+                else:
+                    if "optimized" in x:
+                        y = x
+                        y.replace("optimized", "original")
+                        ext = y.split(".")[1]
+                        baseurl = y.split("_2_")[0]
+                        newurl = baseurl + ext
+                        y = baseurl + "." + ext
+                    else:
+                        y = x
+
+                    img_url = y.split("(")[1].split(")")[0]
+                    img_tag = y.split("]")[0].split("[")[1]
+
+                    try:
+                        img_alt_text = img_tag.split("|")[0]
+                    except:
+                        img_alt_text = img_tag
+
+                    ## replace the image line with html
+                    repl_img_line = '<a href="' + img_url + '" '
+                    repl_img_line += 'target = "_blank">'
+                    repl_img_line += "<img "
+                    repl_img_line += 'src="' + img_url + '"></a>'
+
+                print("after", repl_img_line)
+
+                ## replace the image line in the markdown
+
+
+#                md = md.replace(x, repl_img_line)
+
+#            mdfile = open(mdfilename, "w")
+#            md = mdfile.write(md)
+#            mdfile.close()
+
+
+if __name__ == "__main__":
+    xpub()

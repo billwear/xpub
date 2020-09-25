@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+
+import glob, sys
+
+# run through all the original filenames
+for name in glob.glob("originals/*.md"):
+    discourse_url_base = name.split("/")[1].split(".")[0]
+
+    # peel off the topic
+    topic = discourse_url_base.split("-")[-1]
+
+    # extract the tags as a list
+    tag_list = discourse_url_base.split("-")[-5:-1]
+
+    # extract the pieces of the base document name into a list
+    base_name_list = discourse_url_base.split("-")[0:-5]
+
+    # build back the base filename from the list
+    basename = ""
+    for x in base_name_list:
+        basename += x + "-"
+    basename = basename.rstrip("-")
+
+    # build the discourse url: note that a title-slug is not required,
+    # as long as the correct topic number is given, allowing us to keep
+    # the URL mapping list much shorter and keep the base doc file much shorter
+    discourse_url = "https://discourse.maas.io/t/-/" + str(topic)
+
+    # there's a try loop, just in case there are non-maas-doc .md files in the dir
+    try:
+        url = "/docs/" + tag_list[0] + "/" + tag_list[1] + "." + tag_list[2] + "/" + tag_list[3]
+        url += "/" + basename
+    except:
+        continue
+
+    print("|" + discourse_url + "|" + url + "|")
+
+
+
+
+    #     # fix the topic name
+    #     last_char_index = rbase.rfind("-")
+    #     topic_slug = rbase[:last_char_index] + "/" + rbase[last_char_index + 1 :]
+
+    #     # add the rad elements to the lists
+    #     rad_tag.append(tag)
+    #     rad_element.append([tag, tagcloud[3].upper(), topic_slug])
+
+    # # sort the array so the presentation matches the menu
+    # rad_element.sort()
+    # rad_tag.sort()
+
+    # # debug print
+    # print(target)
+    
+    # # clear the rad block buffer
+    # rad_block = ""
+
+    # # set the tag counter, to know which one gets no link
+    # rad_block_counter = 0
+
+    # # loop through the tags and build the rad blocks
+    # for tag in rad_tag:
+
+    #     # increment the rad block counter
+    #     rad_block_counter += 1
+
+    #     # add the opening tag to the rad block
+    #     rad_block = "<!-- " + tag + "\n"
+
+    #     # add the table header
+    #     rad_block += "||2.7|2.8|2.9|\n"
+
+    #     # add the divider to the table
+    #     rad_block += "|-----:|:-----:|:-----:|:-----:|\n"
+
+    #     # build out the menu
+    #     rad_block += "|Snap"
+    #     if rad_block_counter == 7:
+    #         rad_block += "|**CLI** ~ "
+    #     else:
+    #         rad_block += "|[" + rad_element[6][1] + "](/t/" + rad_element[6][2] + ") ~ "
+    #     if rad_block_counter == 8:
+    #         rad_block += "**UI**|"
+    #     else:
+    #         rad_block += "[" + rad_element[7][1] + "](/t/" + rad_element[7][2] + ")|"
+    #     if rad_block_counter == 9:
+    #         rad_block += "|**CLI** ~ "
+    #     else:
+    #         rad_block += "[" + rad_element[8][1] + "](/t/" + rad_element[8][2] + ") ~ "
+    #     if rad_block_counter == 10:
+    #         rad_block += "**UI**|"
+    #     else:
+    #         rad_block += "[" + rad_element[9][1] + "](/t/" + rad_element[9][2] + ")|"
+    #     if rad_block_counter == 11:
+    #         rad_block += "|**CLI** ~ "
+    #     else:
+    #         rad_block += (
+    #             "[" + rad_element[10][1] + "](/t/" + rad_element[10][2] + ") ~ "
+    #         )
+    #     if rad_block_counter == 12:
+    #         rad_block += "**UI**|\n"
+    #     else:
+    #         print(rad_element)
+    #         rad_block += (
+    #             "[" + rad_element[11][1] + "](/t/" + rad_element[11][2] + ")|\n"
+    #         )
+    #     rad_block += "|Packages"
+    #     if rad_block_counter == 1:
+    #         rad_block += "|**CLI** ~ "
+    #     else:
+    #         rad_block += "|[" + rad_element[0][1] + "](/t/" + rad_element[0][2] + ") ~ "
+    #     if rad_block_counter == 2:
+    #         rad_block += "**UI**|"
+    #     else:
+    #         rad_block += "[" + rad_element[1][1] + "](/t/" + rad_element[1][2] + ")|"
+    #     if rad_block_counter == 3:
+    #         rad_block += "|**CLI** ~ "
+    #     else:
+    #         rad_block += "[" + rad_element[2][1] + "](/t/" + rad_element[2][2] + ") ~ "
+    #     if rad_block_counter == 4:
+    #         rad_block += "**UI**|"
+    #     else:
+    #         rad_block += "[" + rad_element[3][1] + "](/t/" + rad_element[3][2] + ")|"
+    #     if rad_block_counter == 5:
+    #         rad_block += "|**CLI** ~ "
+    #     else:
+    #         rad_block += "[" + rad_element[4][1] + "](/t/" + rad_element[4][2] + ") ~ "
+    #     if rad_block_counter == 6:
+    #         rad_block += "**UI**|\n"
+    #     else:
+    #         rad_block += "[" + rad_element[5][1] + "](/t/" + rad_element[5][2] + ")|\n"
+
+    #     # close out the rad block
+    #     rad_block += " " + tag + " -->\n\n"
+    #     rad_group += rad_block
+
+    # master = open(name, "r")
+    # contents = master.read()
+    # master.close()
+    # master = open(name, "w")
+    # master.write(rad_group)
+    # master.write(contents)
+    # master.close()

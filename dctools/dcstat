@@ -1,0 +1,699 @@
+#!/usr/bin/python3
+
+import sys, subprocess, json, os, time, re, markdown, jinja2
+from shutil import copyfile
+from datetime import datetime
+import math
+import pytz
+import shutil
+import requests
+from yaml import load, dump
+
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    from yaml import Loader, Dumper
+
+pull_list = [
+    129,
+    136,
+    164,
+    165,
+    172,
+    179,
+    181,
+    185,
+    186,
+    192,
+    193,
+    200,
+    201,
+    203,
+    204,
+    212,
+    218,
+    225,
+    226,
+    234,
+    235,
+    237,
+    238,
+    241,
+    246,
+    247,
+    248,
+    253,
+    259,
+    262,
+    271,
+    274,
+    275,
+    277,
+    282,
+    284,
+    287,
+    292,
+    293,
+    297,
+    299,
+    302,
+    303,
+    305,
+    308,
+    309,
+    312,
+    313,
+    314,
+    316,
+    318,
+    321,
+    323,
+    325,
+    328,
+    333,
+    334,
+    338,
+    341,
+    343,
+    346,
+    348,
+    349,
+    350,
+    360,
+    361,
+    362,
+    365,
+    367,
+    368,
+    370,
+    371,
+    372,
+    376,
+    378,
+    380,
+    384,
+    386,
+    396,
+    397,
+    398,
+    401,
+    405,
+    409,
+    411,
+    412,
+    415,
+    418,
+    420,
+    421,
+    422,
+    426,
+    428,
+    429,
+    431,
+    434,
+    438,
+    439,
+    441,
+    442,
+    443,
+    450,
+    451,
+    454,
+    456,
+    458,
+    464,
+    467,
+    471,
+    473,
+    476,
+    480,
+    483,
+    484,
+    486,
+    490,
+    491,
+    497,
+    498,
+    500,
+    502,
+    504,
+    506,
+    507,
+    509,
+    510,
+    512,
+    515,
+    517,
+    520,
+    524,
+    527,
+    531,
+    535,
+    536,
+    538,
+    546,
+    550,
+    552,
+    553,
+    555,
+    559,
+    560,
+    562,
+    565,
+    570,
+    573,
+    574,
+    576,
+    579,
+    581,
+    584,
+    585,
+    587,
+    588,
+    589,
+    590,
+    593,
+    594,
+    597,
+    601,
+    602,
+    604,
+    605,
+    607,
+    609,
+    611,
+    615,
+    715,
+    717,
+    719,
+    725,
+    727,
+    729,
+    731,
+    732,
+    734,
+    738,
+    845,
+    848,
+    850,
+    855,
+    857,
+    863,
+    865,
+    867,
+    875,
+    876,
+    880,
+    883,
+    887,
+    890,
+    891,
+    893,
+    896,
+    900,
+    902,
+    904,
+    909,
+    910,
+    913,
+    914,
+    915,
+    919,
+    920,
+    921,
+    924,
+    926,
+    929,
+    931,
+    932,
+    936,
+    937,
+    939,
+    940,
+    943,
+    946,
+    947,
+    949,
+    951,
+    955,
+    956,
+    959,
+    963,
+    964,
+    965,
+    968,
+    971,
+    973,
+    975,
+    976,
+    977,
+    981,
+    982,
+    985,
+    987,
+    997,
+    1002,
+    1012,
+    1021,
+    1022,
+    1028,
+    1029,
+    1036,
+    1038,
+    1040,
+    1042,
+    1044,
+    1046,
+    1047,
+    1048,
+    1049,
+    1053,
+    1056,
+    1058,
+    1060,
+    1062,
+    1065,
+    1067,
+    1069,
+    1070,
+    1071,
+    1072,
+    1075,
+    1082,
+    1083,
+    1084,
+    1085,
+    1090,
+    1092,
+    1094,
+    1096,
+    1100,
+    1103,
+    1104,
+    1108,
+    1109,
+    1119,
+    1121,
+    1124,
+    1130,
+    1135,
+    1144,
+    1152,
+    1154,
+    1156,
+    1157,
+    1161,
+    1166,
+    1168,
+    1176,
+    1180,
+    1185,
+    1196,
+    1199,
+    1203,
+    1207,
+    1209,
+    1212,
+    1215,
+    1220,
+    1224,
+    1226,
+    1227,
+    1234,
+    1238,
+    1241,
+    1245,
+    1246,
+    1252,
+    1255,
+    1260,
+    1261,
+    1271,
+    1276,
+    1283,
+    1285,
+    1286,
+    1293,
+    1295,
+    1296,
+    1297,
+    1298,
+    1299,
+    1301,
+    1303,
+    1307,
+    1310,
+    1312,
+    1313,
+    1315,
+    1320,
+    1321,
+    1325,
+    1327,
+    1334,
+    1343,
+    1346,
+    1347,
+    1348,
+    1350,
+    1352,
+    1353,
+    1354,
+    1357,
+    1358,
+    1363,
+    1367,
+    1373,
+    1378,
+    1391,
+    1393,
+    1397,
+    1399,
+    1400,
+    1403,
+    1404,
+    1410,
+    1412,
+    1417,
+    1426,
+    1428,
+    1429,
+    1431,
+    1433,
+    1436,
+    1439,
+    1441,
+    1448,
+    1455,
+    1462,
+    1464,
+    1470,
+    1471,
+    1475,
+    1495,
+    1496,
+    1503,
+    1504,
+    1509,
+    1513,
+    1516,
+    1522,
+    1528,
+    1530,
+    1533,
+    1534,
+    1539,
+    1540,
+    1542,
+    1544,
+    1555,
+    1556,
+    1558,
+    1564,
+    1639,
+    1645,
+    1647,
+    1651,
+    1653,
+    1659,
+    1662,
+    1664,
+    1667,
+    1669,
+    1675,
+    1691,
+    1692,
+    1696,
+    1697,
+    1701,
+    1704,
+    1709,
+    1713,
+    1715,
+    1719,
+    1720,
+    1722,
+    1727,
+    1736,
+    1746,
+    1748,
+    1755,
+    1756,
+    1759,
+    1761,
+    1764,
+    1765,
+    1766,
+    1901,
+    1903,
+    1907,
+    1915,
+    1923,
+    1925,
+    1930,
+    1933,
+    1941,
+    1944,
+    1945,
+    1948,
+    1951,
+    1961,
+    1964,
+    1972,
+    1979,
+    1981,
+    1983,
+    1988,
+    2157,
+    2164,
+    2169,
+    2183,
+    2215,
+    2216,
+    2217,
+    2219,
+    2223,
+    2230,
+    2231,
+    2232,
+    2237,
+    2241,
+    2242,
+    2243,
+    2247,
+    3286,
+    3282,
+    3283,
+    3284,
+    3287,
+    3297,
+    3302,
+    3305,
+    3307,
+    3309,
+    3311,
+]
+
+dc_open = []
+dc_closed = []
+dc_ip = []
+total_posts = 0
+open_posts = 0
+closed_posts = 0
+ip_posts = 0
+
+# read config file to get api-key, api-usr, and discourse url
+try:
+    cfile = open("/etc/dc.yaml", "r")
+except:
+    print('xpub: unable to find config file "/etc/dc.yaml"')
+    print("xpub: exiting")
+    sys.exit(4)
+config_data = load(cfile, Loader=Loader)
+cfile.close()
+
+# giant for loop to get the topic range specified
+for x in pull_list:
+
+    print("pulling ", x)
+
+    topic_attr = []
+
+    # sleep for 2.5 seconds - prevents discourse DDOS rejection
+    time.sleep(2.5)
+
+    # quiet it down some (write stderr to log)
+    logfile = open("dcstat.log", "w")
+
+    # run the shell command to get the topic and retain the result
+    proc = subprocess.Popen(
+        [
+            "curl",
+            "-X",
+            "GET",
+            "-H",
+            "Api-Key: " + config_data["api_key"],
+            "-H",
+            "Api-Username: " + config_data["api_username"],
+            "-H",
+            "Content-Type: application/json",
+            config_data["base_url"] + "/t/{" + str(x) + "}.json",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=logfile,
+    )
+
+    # read the result into a usable buffer
+    output = proc.stdout.read()
+
+    # convert the result to json; if it fails, skip this record
+    try:
+        topic_json = json.loads(output)
+    except:
+        continue
+
+    # skip deleted topics
+    try:
+        deleted_at = topic_json["deleted_at"]
+    except:
+        continue
+    if deleted_at:
+        continue
+
+    # who was the last poster (helps understand age / urgency)
+    last_poster = topic_json["details"]["last_poster"]["username"]
+
+    # increment the total posts
+    total_posts += 1
+
+    # extract the topic "slug" from the topic json
+    topic_slug = topic_json["post_stream"]["posts"][0]["topic_slug"]
+
+    # extract the last updated time from the topic json, because we'll
+    # set the file's modification time to this value
+    updated_at = topic_json["post_stream"]["posts"][0]["updated_at"]
+    modtime_zulu = datetime.strptime(updated_at, "%Y-%m-%dT%H:%M:%S.%fZ")
+    modtime_local = pytz.utc.localize(modtime_zulu).astimezone(None)
+    modtime = datetime.strftime(modtime_local, "%d %b %Y @ %H:%M")
+    modword = datetime.strftime(modtime_local, "%Y%m%d%H%M%S")
+
+    # is this topic closed?
+    closed = topic_json["closed"]
+
+    # put info in the closed list
+    if closed == True:
+        closed_posts += 1
+        topic_attr.append(
+            "["
+            + str(x)
+            + "](https:/discourse.maas.io/t/"
+            + topic_slug
+            + "/"
+            + str(x)
+            + ") "
+        )
+        topic_attr.append("Closed")
+        topic_attr.append(str(modtime))
+        topic_attr.append(str(modword))
+        topic_attr.append(last_poster)
+        dc_closed.append(topic_attr)
+        continue
+
+    # is this topic in progress? (if there is more than one participant)
+    inprogress = topic_json["participant_count"]
+    if int(inprogress) > 1:
+        ip_posts += 1
+        topic_attr.append(
+            "["
+            + str(x)
+            + "](https:/discourse.maas.io/t/"
+            + topic_slug
+            + "/"
+            + str(x)
+            + ") "
+        )
+        topic_attr.append("In progress")
+        topic_attr.append(str(modtime))
+        topic_attr.append(str(modword))
+        topic_attr.append(last_poster)
+        dc_ip.append(topic_attr)
+        continue
+
+    # so this post must be "open"
+    open_posts += 1
+    topic_attr.append(
+        "["
+        + str(x)
+        + "](https:/discourse.maas.io/t/"
+        + topic_slug
+        + "/"
+        + str(x)
+        + ") "
+    )
+    topic_attr.append("Open")
+    topic_attr.append(str(modtime))
+    topic_attr.append(str(modword))
+    topic_attr.append(last_poster)
+    dc_open.append(topic_attr)
+
+# open the discourse statistics file
+fc = open("discourse-statistics-1515-.md", "w")
+
+# print the current time
+now = datetime.today()
+nowtime = datetime.strftime(now, "%d %b %Y @ %H:%M")
+fc.write("Last updated on " + nowtime + "\n\n")
+
+# compute the rough statistics
+percent_closed = float(closed_posts) / float(total_posts) * 100.0
+percent_open = float(open_posts) / float(total_posts) * 100.0
+percent_ip = float(ip_posts) / float(total_posts) * 100.0
+
+# print statistics
+fc.write("### Discourse statistics\n\n")
+fc.write("| Open | % | In progress | % | Closed | % | Total |\n")
+fc.write("|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|\n")
+fc.write(
+    "| "
+    + str(open_posts)
+    + " | "
+    + "%.2f" % percent_open
+    + " | "
+    + str(ip_posts)
+    + " | "
+    + "%.2f" % percent_ip
+    + " | "
+    + str(closed_posts)
+    + " | "
+    + "%.2f" % percent_closed
+    + " | "
+    + str(total_posts)
+    + " | "
+    + "\n"
+)
+
+# print open posts
+dc_open.sort(key=lambda x: x[3])
+fc.write("\n### Open posts\n")
+fc.write("| Post | Last poster | Status | Posted |\n")
+fc.write("|:-----|:-----|:-----|:-----|\n")
+for x in dc_open:
+    fc.write("| " + x[0] + " | " + x[4] + " | " + x[1] + " | " + x[2] + " |\n")
+
+# print i/p posts
+dc_ip.sort(key=lambda x: x[3])
+fc.write("\n### Posts in progress\n")
+fc.write("| Post | Last poster | Status | Last poster |\n")
+fc.write("|:-----|:-----|:-----|:-----|\n")
+for x in dc_ip:
+    fc.write("| " + x[0] + " | " + x[4] + " | " + x[1] + " | " + x[2] + " |\n")
+
+# print closed posts
+dc_closed.sort(key=lambda x: x[3])
+fc.write("\n### Closed posts\n")
+fc.write("| Post | Last poster | Status | Closed |\n")
+fc.write("|:-----|:-----|:-----|:-----|\n")
+for x in dc_closed:
+    fc.write("| " + x[0] + " | " + x[4] + " | " + x[1] + " | " + x[2] + " |\n")
+
+fc.close()
